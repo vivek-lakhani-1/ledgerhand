@@ -1,0 +1,15 @@
+{
+  "status": "success",
+  "runId": "replay-8c10732ad357",
+  "capability": {
+    "id": "cap_member_savings_balance",
+    "version": "1.0.0"
+  },
+  "outputs": {
+    "savingsBalance": 1250.75,
+    "memberName": "Ada Exampleton"
+  },
+  "stepsExecuted": 6,
+  "durationMs": 35212,
+  "evidenceDir": "evidence/runs/replay-8c10732ad357"
+}

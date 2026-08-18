@@ -1,0 +1,13 @@
+{
+  "status": "business_outcome",
+  "runId": "replay-fc62b7457ca4",
+  "capability": {
+    "id": "cap_member_savings_balance",
+    "version": "1.0.0"
+  },
+  "code": "MEMBER_NOT_FOUND",
+  "message": "No member record was found for the requested member ID.",
+  "outputs": {},
+  "atStepId": "s5",
+  "evidenceDir": "evidence/runs/replay-fc62b7457ca4"
+}

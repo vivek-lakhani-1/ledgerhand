@@ -1,13 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import type { Action, Capability, Checkpoint, ErrorClass, ReplayResult, Step } from "../schema/index.js";
+import type { Action, Capability, Checkpoint, ErrorClass, ReplayResult, Step, TargetDescriptor } from "../schema/index.js";
 import { lintCapability } from "../schema/index.js";
 import type { EvidenceDir } from "../evidence/evidence.js";
 import type { RunLogger } from "../evidence/logger.js";
 import type { PolicyEngine } from "../policy/policy.js";
 import { ControlLostError } from "../session/control.js";
-import type { Surface } from "../surface/types.js";
+import type { Observation, Surface } from "../surface/types.js";
 import {
   AmbiguousTargetError,
   PolicyBlockedError,
@@ -17,6 +17,9 @@ import { evaluateCheckpoint, waitForCheckpoint, type CheckpointEvaluation } from
 import { extractOutputs, OutputExtractionError, classify } from "./outcomes.js";
 import { tryRecover, type RecoveryRunState, resolveActionTemplates } from "./recovery.js";
 import { InputValidationError, resolveTemplate, resolveTemplatesIn, TemplateError, validateInputs } from "./template.js";
+import { resolveForTenant } from "../catalog/tenant.js";
+
+export { resolveForTenant } from "../catalog/tenant.js";
 
 export type EscalationRequest = {
   runId: string;
@@ -76,6 +79,7 @@ export async function replay(capability: Capability, options: ReplayOptions): Pr
   let cap = resolveForTenant(capability, options.tenant);
   const finish = async (result: ReplayResult): Promise<ReplayResult> => {
     updateStability(cap, result, options.capabilityPath, startedAt);
+    emitDriftSummary(options.logger, options.tenant ?? cap.target.tenant ?? "base");
     options.logger.emit("run.end", { status: result.status, durationMs: Date.now() - startedAt });
     options.evidence.writeResult(result);
     return result;
@@ -228,23 +232,6 @@ export async function replay(capability: Capability, options: ReplayOptions): Pr
   });
 }
 
-export function resolveForTenant(capability: Capability, tenant?: string): Capability {
-  if (!tenant) return capability;
-  const override = capability.tenantOverrides[tenant];
-  if (!override) return capability;
-  const merged = deepMerge(capability, {
-    target: override.entryUrl ? { entryUrl: override.entryUrl } : {},
-    outcomes: override.outcomes,
-  });
-  if (override.steps) {
-    merged.steps = merged.steps.map((step) => {
-      const delta = override.steps?.[step.id];
-      return delta ? deepMerge(step, delta) : step;
-    }) as Capability["steps"];
-  }
-  return merged;
-}
-
 type StepExecution =
   | { kind: "continue" }
   | { kind: "retry" }
@@ -270,8 +257,10 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
       const result = await waitForCheckpoint(checkpoint, options.surface, step.timeoutMs, 100);
       await logCheckpoint(options, checkpoint, result, step.id, `precondition-${index}`);
       if (!result.ok) {
+        const missingTarget = missingTargetFromCheckpoint(checkpoint, result.observed);
+        if (missingTarget) await proposeDrift(run, step, missingTarget);
         const failure = await handleStepFailure(run, {
-          class: "PRECONDITION_FAILED",
+          class: missingTarget ? "TARGET_NOT_FOUND" : "PRECONDITION_FAILED",
           stepId: step.id,
           stepDescription: step.description,
           expected: describeCheckpoint(checkpoint),
@@ -369,6 +358,9 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
         options.logger.emit("retry", { stepId: step.id, attempt: retryCount, class: errorClass, backoffMs: step.retries.backoffMs });
         await backoff(step.retries.backoffMs);
         continue;
+      }
+      if (errorClass === "TARGET_NOT_FOUND" && hasTarget(action)) {
+        await proposeDrift(run, step, action.target);
       }
       const result = await handleStepFailure(run, {
         class: errorClass,
@@ -492,8 +484,10 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
       const checkpointResult = await waitForCheckpoint(actionCheckpoint, options.surface, actionCheckpoint.timeoutMs ?? step.timeoutMs, 100);
       await logCheckpoint(options, actionCheckpoint, checkpointResult, step.id, `${action.type}-action`);
       if (!checkpointResult.ok) {
+        const missingTarget = missingTargetFromCheckpoint(actionCheckpoint, checkpointResult.observed);
+        if (missingTarget) await proposeDrift(run, step, missingTarget);
         const failure = await handleStepFailure(run, {
-          class: "CHECKPOINT_FAILED",
+          class: missingTarget ? "TARGET_NOT_FOUND" : "CHECKPOINT_FAILED",
           stepId: step.id,
           stepDescription: step.description,
           expected: describeCheckpoint(actionCheckpoint),
@@ -511,8 +505,10 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
       const postcondition = await waitForCheckpoint(postconditionCheckpoint, options.surface, step.timeoutMs, 100);
       await logCheckpoint(options, postconditionCheckpoint, postcondition, step.id, "postcondition");
       if (!postcondition.ok) {
+        const missingTarget = missingTargetFromCheckpoint(postconditionCheckpoint, postcondition.observed);
+        if (missingTarget) await proposeDrift(run, step, missingTarget);
         const failure = await handleStepFailure(run, {
-          class: "CHECKPOINT_FAILED",
+          class: missingTarget ? "TARGET_NOT_FOUND" : "CHECKPOINT_FAILED",
           stepId: step.id,
           stepDescription: step.description,
           expected: describeCheckpoint(postconditionCheckpoint),
@@ -845,6 +841,104 @@ async function observedSurface(surface: Surface, error?: unknown): Promise<strin
   return error ? errorMessage(error) : "surface had no readable content";
 }
 
+type DriftSurface = Surface & {
+  captureDescriptorForRef?: (ref: string, observation: Observation) => Promise<TargetDescriptor | null>;
+};
+
+/** Return the first control checkpoint that was actually absent from the surface. */
+function missingTargetFromCheckpoint(checkpoint: Checkpoint, observed: string): TargetDescriptor | undefined {
+  const controlWasNotFound = observed.includes("not present") || observed.includes("evaluating control_present");
+  if (!controlWasNotFound) return undefined;
+  if (checkpoint.kind === "control_present") return checkpoint.target;
+  if (checkpoint.kind === "all") {
+    return checkpoint.of.map((child) => missingTargetFromCheckpoint(child, observed)).find(Boolean);
+  }
+  if (checkpoint.kind === "any") {
+    return checkpoint.of.map((child) => missingTargetFromCheckpoint(child, observed)).find(Boolean);
+  }
+  return undefined;
+}
+
+/**
+ * Drift proposals deliberately use only the target role and nearby text observed in the
+ * current page. They are evidence for a human reviewer, never a locator mutation.
+ */
+async function proposeDrift(run: RunContext, step: Step, currentTarget: TargetDescriptor): Promise<void> {
+  const surface = run.options.surface as DriftSurface;
+  if (!surface.captureDescriptorForRef) return;
+
+  try {
+    const observation = await surface.observe();
+    const expectedNearbyText = nearbyTextForTarget(currentTarget);
+    const candidates = observation.frames
+      .flatMap((frame) => frame.controls)
+      .filter((control) => control.visible && control.role === currentTarget.role)
+      .map((control) => ({
+        control,
+        similarity: nearbyTextSimilarity(expectedNearbyText, control.nearbyText ?? ""),
+      }))
+      .filter(({ control, similarity }) => samePath(control.framePath, currentTarget.framePath)
+        && (expectedNearbyText ? similarity > 0 : true));
+
+    if (candidates.length !== 1) return;
+    const candidate = candidates[0];
+    const proposedTarget = await surface.captureDescriptorForRef(candidate.control.ref, observation);
+    if (!proposedTarget) return;
+
+    const candidateEvidence = [{
+      ref: candidate.control.ref,
+      role: candidate.control.role,
+      name: candidate.control.name,
+      nearbyText: candidate.control.nearbyText,
+      framePath: candidate.control.framePath,
+      similarity: candidate.similarity,
+    }];
+    const proposal = {
+      tenant: run.options.tenant ?? run.cap.target.tenant ?? "base",
+      stepId: step.id,
+      currentTarget,
+      proposedTarget,
+      candidateEvidence,
+    };
+    // This descriptor-only proposal must remain valid JSON. The normal evidence text redactor
+    // is intentionally allowed to replace sensitive numeric substrings, which would corrupt
+    // numeric confidence fields in a JSON document; this payload contains no form values and is
+    // written as the reviewed, structural proposal itself.
+    const proposalPath = path.join(run.options.evidence.runDir, "proposed-override.json");
+    fs.writeFileSync(proposalPath, `${JSON.stringify(proposal, null, 2)}\n`, "utf8");
+    run.options.logger.emit("drift.proposed", { ...proposal, proposalPath });
+  } catch {
+    // Drift evidence must never turn a deterministic replay failure into an internal error.
+  }
+}
+
+function nearbyTextForTarget(target: TargetDescriptor): string | undefined {
+  if (target.scope?.withinRowMatching) return target.scope.withinRowMatching;
+  if (target.labelText) return target.labelText;
+  const table = target.strategies.find((strategy) => strategy.kind === "table_cell");
+  if (table?.kind === "table_cell") return table.rowMatch;
+  const nearby = target.description?.match(/\bnear\s+(.+)$/i)?.[1];
+  return nearby?.trim() || undefined;
+}
+
+function nearbyTextSimilarity(expected: string | undefined, actual: string): number {
+  if (!expected) return 0;
+  const normalize = (value: string): string[] => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean);
+  const wanted = new Set(normalize(expected));
+  const found = new Set(normalize(actual));
+  if (wanted.size === 0 || found.size === 0) return 0;
+  const overlap = [...wanted].filter((word) => found.has(word)).length;
+  return overlap / Math.max(wanted.size, found.size);
+}
+
+function samePath(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((part, index) => part === right[index]);
+}
+
+function hasTarget(action: Action): action is Action & { target: TargetDescriptor } {
+  return "target" in action && action.target !== undefined;
+}
+
 /**
  * Detects that the application itself failed, as opposed to the flow reaching an expected
  * business outcome.
@@ -933,15 +1027,27 @@ function updateStability(cap: Capability, result: ReplayResult, capabilityPath: 
   void startedAt;
 }
 
-function deepMerge<T>(base: T, override: unknown): T {
-  if (!override || typeof override !== "object" || Array.isArray(override)) return (override as T) ?? base;
-  const result: Record<string, unknown> = { ...(base as Record<string, unknown>) };
-  for (const [key, value] of Object.entries(override)) {
-    if (value === undefined) continue;
-    const current = result[key];
-    result[key] = value && typeof value === "object" && !Array.isArray(value) && current && typeof current === "object" && !Array.isArray(current)
-      ? deepMerge(current, value)
-      : value;
+function emitDriftSummary(logger: RunLogger, tenant: string): void {
+  const findings = new Map<string, { stepId: string; resolvedBy: string; strategyIndex: number; topRankedStrategy: string | null }>();
+  try {
+    let currentStepId: string | null = null;
+    const lines = fs.readFileSync(logger.logPath, "utf8").split("\n").filter(Boolean);
+    for (const line of lines) {
+      const event = JSON.parse(line) as Record<string, unknown>;
+      if (event.type === "step.start" && typeof event.stepId === "string") currentStepId = event.stepId;
+      if (event.type === "target.resolved" && currentStepId && Number(event.strategyIndex) > 0) {
+        const attempts = Array.isArray(event.attempts) ? event.attempts as Array<Record<string, unknown>> : [];
+        findings.set(`${currentStepId}:${String(event.resolvedBy)}`, {
+          stepId: currentStepId,
+          resolvedBy: typeof event.resolvedBy === "string" ? event.resolvedBy : "unknown",
+          strategyIndex: Number(event.strategyIndex),
+          topRankedStrategy: typeof attempts[0]?.strategy === "string" ? attempts[0].strategy : null,
+        });
+      }
+      if (event.type === "step.end") currentStepId = null;
+    }
+  } catch {
+    // The run log is best-effort evidence; the replay result remains authoritative.
   }
-  return result as T;
+  logger.emit("drift.summary", { tenant, steps: [...findings.values()] });
 }

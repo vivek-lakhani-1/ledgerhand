@@ -15,6 +15,8 @@ export const EventType = [
   "escalation.raised",
   "human.action",
   "human.resolved",
+  "drift.proposed",
+  "drift.summary",
   "step.end",
   "run.end",
 ] as const;

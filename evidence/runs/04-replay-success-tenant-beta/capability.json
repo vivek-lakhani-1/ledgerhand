@@ -11,7 +11,7 @@
     "app": "meridian-msc",
     "appVersion": "1.0",
     "tenant": "alpha",
-    "entryUrl": "http://127.0.0.1:4599/t/alpha/msc/login",
+    "entryUrl": "http://127.0.0.1:4599/t/beta/msc/login",
     "viewport": {
       "width": 1280,
       "height": 900
@@ -25,7 +25,7 @@
       "description": "The member identifier to search for.",
       "pattern": "^[0-9]{5}$",
       "sensitivity": "pii",
-      "example": "10001"
+      "example": "1***1"
     }
   ],
   "outputs": [
@@ -236,6 +236,7 @@
         "target": {
           "role": "textbox",
           "nameMatch": "exact",
+          "labelText": "Account Number:",
           "framePath": [
             "content"
           ],
@@ -248,9 +249,9 @@
               "origin": "captured"
             }
           ],
-          "description": "Member ID search field"
+          "description": "Account Number search field"
         },
-        "description": "Member search form is loaded in the content frame"
+        "description": "Tenant beta member search form is loaded in the content frame"
       },
       "timeoutMs": 15000,
       "retries": {
@@ -268,6 +269,7 @@
         "target": {
           "role": "textbox",
           "nameMatch": "exact",
+          "labelText": "Account Number:",
           "framePath": [
             "content"
           ],
@@ -280,7 +282,7 @@
               "origin": "captured"
             }
           ],
-          "description": "Member ID search field"
+          "description": "Account Number search field"
         },
         "value": "{{inputs.memberId}}",
         "clearFirst": true
@@ -291,7 +293,7 @@
         "kind": "control_present",
         "target": {
           "role": "button",
-          "name": "Retrieve",
+          "name": "Search",
           "nameMatch": "exact",
           "framePath": [
             "content"
@@ -300,13 +302,13 @@
             {
               "kind": "aria",
               "role": "button",
-              "name": "Retrieve",
+              "name": "Search",
               "exact": true,
               "confidence": 0.99,
               "origin": "captured"
             }
           ],
-          "description": "Retrieve member record button"
+          "description": "Search member record button"
         }
       },
       "timeoutMs": 15000,
@@ -324,7 +326,7 @@
         "type": "click",
         "target": {
           "role": "button",
-          "name": "Retrieve",
+          "name": "Search",
           "nameMatch": "exact",
           "framePath": [
             "content"
@@ -333,13 +335,13 @@
             {
               "kind": "aria",
               "role": "button",
-              "name": "Retrieve",
+              "name": "Search",
               "exact": true,
               "confidence": 0.99,
               "origin": "captured"
             }
           ],
-          "description": "Retrieve member record button"
+          "description": "Search member record button"
         }
       },
       "risk": "safe",
@@ -357,25 +359,18 @@
               ],
               "scope": {
                 "withinRowMatching": "Savings",
-                "columnHeader": "Current Balance"
+                "columnHeader": "Balance (USD)"
               },
               "strategies": [
                 {
                   "kind": "table_cell",
                   "rowMatch": "Savings",
-                  "columnHeader": "Current Balance",
+                  "columnHeader": "Balance (USD)",
                   "confidence": 0.99,
                   "origin": "captured"
-                },
-                {
-                  "kind": "table_cell",
-                  "rowMatch": "Savings",
-                  "columnHeader": "Balance (USD)",
-                  "confidence": 0.98,
-                  "origin": "derived"
                 }
               ],
-              "description": "Current Balance cell on the Savings row"
+              "description": "Balance (USD) cell on the Savings row"
             }
           },
           {
@@ -385,10 +380,10 @@
             "framePath": [
               "content"
             ],
-            "description": "Member ID is visible on the detail page"
+            "description": "Account Number is visible on the detail page"
           }
         ],
-        "description": "Member detail page shows the requested ID and Savings balance"
+        "description": "Tenant beta member detail page shows the requested ID and Savings balance"
       },
       "timeoutMs": 15000,
       "retries": {
@@ -692,11 +687,11 @@
     "llmStepCount": 0
   },
   "stability": {
-    "runs": 1,
-    "successes": 1,
+    "runs": 0,
+    "successes": 0,
     "businessOutcomes": 0,
     "failures": 0,
-    "lastRunAt": "2026-08-18T21:41:11.934Z"
+    "lastRunAt": null
   },
   "tenantOverrides": {
     "beta": {

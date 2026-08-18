@@ -1,0 +1,18 @@
+{
+  "status": "failed",
+  "runId": "replay-2b1446f2fee4",
+  "capability": {
+    "id": "cap_member_savings_balance",
+    "version": "1.0.0"
+  },
+  "error": {
+    "class": "SURFACE_ERROR",
+    "stepId": "s3",
+    "stepDescription": "Sign into the Member Services Console",
+    "expected": "the target application to return a usable page",
+    "observed": "HTTP 500 from http://127.0.0.1:4599/t/alpha/msc/search — MERIDIAN CREDIT UNION - Member Services Console\n\n\nMenu\nMember Search\nNew Sub-Account\nSign Off APPLICATION ERROR - REF 0x5A2",
+    "message": "Target application returned an application error page",
+    "recoveryAttempts": []
+  },
+  "evidenceDir": "evidence/runs/replay-2b1446f2fee4"
+}

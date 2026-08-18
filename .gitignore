@@ -3,5 +3,8 @@ node_modules/
 *.log
 dist/
 .playwright/
+# Transient run output only. The curated demo runs under evidence/runs/ ARE committed —
+# they are a required deliverable (a saved artifact plus logs from a discovery run and a
+# replay run), not build noise.
 evidence/runs/tmp-*
 .DS_Store

@@ -25,7 +25,7 @@
       "description": "The member identifier to search for.",
       "pattern": "^[0-9]{5}$",
       "sensitivity": "pii",
-      "example": "10001"
+      "example": "1***1"
     }
   ],
   "outputs": [
@@ -692,11 +692,11 @@
     "llmStepCount": 0
   },
   "stability": {
-    "runs": 1,
-    "successes": 1,
+    "runs": 0,
+    "successes": 0,
     "businessOutcomes": 0,
     "failures": 0,
-    "lastRunAt": "2026-08-18T21:41:11.934Z"
+    "lastRunAt": null
   },
   "tenantOverrides": {
     "beta": {
