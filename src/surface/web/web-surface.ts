@@ -8,11 +8,12 @@ import type {
   ActContext,
   ControlHandle,
   Observation,
+  PerceivedControl,
   ResolvedAction,
   Surface,
 } from "../types.js";
 import { captureDescriptor as captureWebDescriptor } from "./capture.js";
-import { enumerateFrames, findFrame, perceive } from "./perception.js";
+import { enumerateFrames, findFrame, perceive, type WebControlHandle } from "./perception.js";
 import { WebLocatorResolver, type Resolved } from "./locator.js";
 
 export class PolicyBlockedError extends Error {
@@ -74,6 +75,43 @@ export class WebSurface implements Surface {
 
   async resolve(target: TargetDescriptor, options: { timeoutMs?: number } = {}): Promise<Resolved | null> {
     return this.resolver.resolve(target, options);
+  }
+
+  /**
+   * Resolve the observation-scoped ref to the live element and capture its descriptor now.
+   * The model supplies only the ref; all locator strategies still come from the perception
+   * and capture layers.
+   */
+  async captureDescriptorForRef(ref: string, observation: Observation): Promise<TargetDescriptor | null> {
+    const perceived = observation.frames
+      .flatMap((frame) => frame.controls)
+      .find((control) => control.ref === ref);
+    if (!perceived) return null;
+
+    const frame = findFrame(this.session.page, perceived.framePath) ?? findFrameByObservationPath(this.session.page, perceived.framePath);
+    if (!frame) return null;
+    const livePath = enumerateFrames(this.session.page).find((item) => item.frame === frame)?.path ?? perceived.framePath;
+    const livePerceived: PerceivedControl = { ...perceived, framePath: livePath };
+    const role = (perceived.role === "image" ? "img" : perceived.role) as Parameters<Frame["getByRole"]>[0];
+    const frameControls = observation.frames.find((entry) => samePath(entry.path, perceived.framePath))?.controls
+      .filter((control) => control.visible && control.role === perceived.role) ?? [];
+    const index = frameControls.findIndex((control) => control.ref === ref);
+    if (index < 0) return null;
+
+    const locator = perceived.name
+      ? frame.getByRole(role, { name: perceived.name, exact: true })
+      : frame.getByRole(role).nth(index);
+    let elementHandle = await locator.elementHandle().catch(() => null);
+    if (!elementHandle) {
+      const fallbackSelector = fallbackSelectorForRole(perceived.role);
+      if (fallbackSelector) {
+        elementHandle = await frame.locator(fallbackSelector).filter({ visible: true }).nth(index).elementHandle().catch(() => null);
+      }
+    }
+    if (!elementHandle) return null;
+
+    const handle: WebControlHandle = { frame, elementHandle, perceived: livePerceived };
+    return this.captureDescriptor(handle);
   }
 
   get lastResolveAttempts() {
@@ -331,4 +369,51 @@ function isWebControlHandle(value: ControlHandle): value is ControlHandle & {
   elementHandle: ElementHandle<Element>;
 } {
   return Boolean(value && typeof value === "object" && "frame" in value && "elementHandle" in value && "perceived" in value);
+}
+
+function samePath(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((segment, index) => segment === right[index]);
+}
+
+function findFrameByObservationPath(page: import("playwright").Page, path: string[]): Frame | null {
+  let current: Frame | null = page.mainFrame();
+  for (const segment of path) {
+    const indexed = /^frame-(\d+)$/.exec(segment);
+    if (indexed) {
+      current = current.childFrames()[Number(indexed[1])] ?? null;
+    } else {
+      current = current.childFrames().find((child) => child.name() === segment) ?? null;
+    }
+    if (!current) return null;
+  }
+  return current;
+}
+
+function fallbackSelectorForRole(role: PerceivedControl["role"]): string | null {
+  switch (role) {
+    case "button":
+      return 'button,input[type="submit"],input[type="button"],input[type="reset"]';
+    case "link":
+      return "a";
+    case "textbox":
+      return 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]),textarea';
+    case "checkbox":
+      return 'input[type="checkbox"]';
+    case "radio":
+      return 'input[type="radio"]';
+    case "combobox":
+      return "select";
+    case "option":
+      return "option";
+    case "cell":
+      return "td,th";
+    case "row":
+      return "tr";
+    case "heading":
+      return "h1,h2,h3,h4,h5,h6";
+    case "image":
+      return "img";
+    default:
+      return null;
+  }
 }
