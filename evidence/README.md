@@ -63,7 +63,12 @@ member ID was — the raw values are in neither the log nor the artifact.
 
 ## Discovery run
 
-`00-discovery-*` is produced by `ledgerhand discover`, which is the one step requiring
-`ANTHROPIC_API_KEY`. It additionally contains `discovery/transcript.jsonl` — the model's tool
-calls and our tool results, kept **separate from the artifact** so the capability stays a
-reviewable contract rather than a model log.
+**Not yet captured in this repo** — `ledgerhand discover` is the one step requiring
+`ANTHROPIC_API_KEY`, and no key was configured when these runs were produced. Running it writes
+`evidence/runs/<runId>/` in the same shape as above, plus `discovery/transcript.jsonl`: the
+model's tool calls and our tool results, kept **separate from the artifact** so the capability
+stays a reviewable contract rather than a model log.
+
+The command is step 2 of the demo path in the root `README.md`. Everything downstream of the
+artifact — replay, outcome classification, recovery, escalation, cross-tenant reuse — is covered
+by the runs above and by the test suite, none of which need a model.
