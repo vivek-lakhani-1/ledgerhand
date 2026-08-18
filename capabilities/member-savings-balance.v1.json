@@ -1,0 +1,381 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "cap_member_savings_balance",
+  "name": "member.savings_balance.lookup",
+  "title": "Look up a member savings balance",
+  "version": "1.0.0",
+  "description": "Logs into the Meridian Member Services Console, searches for a member, and reads the Savings balance and member name.",
+  "approval": "approved",
+  "target": {
+    "surface": "legacy-web",
+    "app": "meridian-msc",
+    "appVersion": "1.0",
+    "tenant": "alpha",
+    "entryUrl": "http://127.0.0.1:4599/t/alpha/msc/login",
+    "viewport": { "width": 1280, "height": 900 }
+  },
+  "inputs": [
+    {
+      "name": "memberId",
+      "type": "string",
+      "required": true,
+      "description": "The member identifier to search for.",
+      "pattern": "^[0-9]{5}$",
+      "sensitivity": "pii",
+      "example": "10001"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "savingsBalance",
+      "type": "currency",
+      "description": "Current balance on the member's Savings account.",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "framePath": ["content"],
+          "scope": { "withinRowMatching": "Savings", "columnHeader": "Current Balance" },
+          "strategies": [
+            { "kind": "table_cell", "rowMatch": "Savings", "columnHeader": "Current Balance", "confidence": 0.99, "origin": "captured" }
+          ],
+          "description": "Current Balance cell on the Savings row"
+        },
+        "transform": "currency_to_number"
+      }
+    },
+    {
+      "name": "memberName",
+      "type": "string",
+      "description": "The member name shown on the member detail page.",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "framePath": ["content"],
+          "strategies": [
+            { "kind": "css", "selector": "body > table:nth-of-type(2) tr:nth-child(2) td:nth-child(2)", "confidence": 0.85, "origin": "derived" }
+          ],
+          "description": "Name value in the member header table"
+        },
+        "transform": "trim"
+      }
+    }
+  ],
+  "secretsRequired": ["APP_USER", "APP_PASSWORD"],
+  "steps": [
+    {
+      "id": "s1",
+      "description": "Enter the operator ID",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            { "kind": "attribute", "attr": "name", "value": "u", "confidence": 0.98, "origin": "captured" }
+          ],
+          "description": "Operator ID field"
+        },
+        "value": "{{secrets.APP_USER}}",
+        "clearFirst": true
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            { "kind": "attribute", "attr": "name", "value": "p", "confidence": 0.98, "origin": "captured" }
+          ],
+          "description": "Operator password field"
+        },
+        "description": "Password field remains available after operator ID entry"
+      }
+    },
+    {
+      "id": "s2",
+      "description": "Enter the operator password",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            { "kind": "attribute", "attr": "name", "value": "p", "confidence": 0.98, "origin": "captured" }
+          ],
+          "description": "Operator password field"
+        },
+        "value": "{{secrets.APP_PASSWORD}}",
+        "clearFirst": true
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "button",
+          "name": "Sign On",
+          "framePath": [],
+          "strategies": [
+            { "kind": "aria", "role": "button", "name": "Sign On", "exact": true, "confidence": 0.99, "origin": "captured" }
+          ],
+          "description": "Sign On button"
+        }
+      }
+    },
+    {
+      "id": "s3",
+      "description": "Sign into the Member Services Console",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Sign On",
+          "framePath": [],
+          "strategies": [
+            { "kind": "aria", "role": "button", "name": "Sign On", "exact": true, "confidence": 0.99, "origin": "captured" }
+          ],
+          "description": "Sign On button"
+        }
+      },
+      "retries": { "max": 2, "backoffMs": 100 },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "textbox",
+          "framePath": ["content"],
+          "strategies": [
+            { "kind": "attribute", "attr": "name", "value": "q", "confidence": 0.98, "origin": "captured" }
+          ],
+          "description": "Member ID search field"
+        },
+        "description": "Member search form is loaded in the content frame"
+      }
+    },
+    {
+      "id": "s4",
+      "description": "Enter the member ID",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": ["content"],
+          "strategies": [
+            { "kind": "attribute", "attr": "name", "value": "q", "confidence": 0.98, "origin": "captured" }
+          ],
+          "description": "Member ID search field"
+        },
+        "value": "{{inputs.memberId}}",
+        "clearFirst": true
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "button",
+          "name": "Retrieve",
+          "framePath": ["content"],
+          "strategies": [
+            { "kind": "aria", "role": "button", "name": "Retrieve", "exact": true, "confidence": 0.99, "origin": "captured" }
+          ],
+          "description": "Retrieve member record button"
+        }
+      }
+    },
+    {
+      "id": "s5",
+      "description": "Retrieve the member record",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Retrieve",
+          "framePath": ["content"],
+          "strategies": [
+            { "kind": "aria", "role": "button", "name": "Retrieve", "exact": true, "confidence": 0.99, "origin": "captured" }
+          ],
+          "description": "Retrieve member record button"
+        }
+      },
+      "retries": { "max": 3, "backoffMs": 100 },
+      "postcondition": {
+        "kind": "all",
+        "of": [
+          {
+            "kind": "control_present",
+            "target": {
+              "role": "cell",
+              "framePath": ["content"],
+              "scope": { "withinRowMatching": "Savings", "columnHeader": "Current Balance" },
+              "strategies": [
+                { "kind": "table_cell", "rowMatch": "Savings", "columnHeader": "Current Balance", "confidence": 0.99, "origin": "captured" }
+              ],
+              "description": "Current Balance cell on the Savings row"
+            }
+          },
+          { "kind": "text_present", "text": "{{inputs.memberId}}", "match": "contains", "framePath": ["content"], "description": "Member ID is visible on the detail page" }
+        ],
+        "description": "Member detail page shows the requested ID and Savings balance"
+      }
+    },
+    {
+      "id": "s6",
+      "description": "Declare the balance and name extraction",
+      "action": { "type": "extract", "outputs": ["savingsBalance", "memberName"] }
+    }
+  ],
+  "outcomes": [
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "description": "No member record was found for the requested member ID.",
+      "detect": { "kind": "text_present", "text": "No member record found", "match": "contains", "framePath": ["content"] },
+      "terminal": true,
+      "outputs": []
+    },
+    {
+      "code": "PERMISSION_DENIED",
+      "description": "The member exists but the operator is not authorized to view the account.",
+      "detect": { "kind": "text_present", "text": "not authorized to view", "match": "contains", "framePath": ["content"] },
+      "terminal": true,
+      "outputs": []
+    },
+    {
+      "code": "VALIDATION_ERROR",
+      "description": "The target application rejected the submitted value.",
+      "detect": { "kind": "text_present", "text": "must be at least", "match": "contains", "framePath": ["content"] },
+      "terminal": true,
+      "outputs": [
+        {
+          "name": "validationMessage",
+          "type": "string",
+          "description": "Validation message returned by the application.",
+          "required": true,
+          "sensitivity": "public",
+          "source": {
+            "kind": "text_of",
+            "target": {
+              "role": "cell",
+              "framePath": ["content"],
+              "strategies": [
+                { "kind": "css", "selector": "table[bgcolor=\"#fff4f4\"] td", "confidence": 0.8, "origin": "derived" }
+              ],
+              "description": "Application validation message"
+            },
+            "transform": "trim"
+          }
+        }
+      ]
+    }
+  ],
+  "recoveries": [
+    {
+      "id": "dismiss_interstitial",
+      "description": "Dismiss the maintenance notice and retry the interrupted step.",
+      "when": { "kind": "text_present", "text": "SYSTEM MAINTENANCE NOTICE", "match": "contains", "framePath": ["content"] },
+      "do": [
+        {
+          "type": "click",
+          "target": {
+            "role": "button",
+            "name": "Continue",
+            "framePath": ["content"],
+            "strategies": [
+              { "kind": "aria", "role": "button", "name": "Continue", "exact": true, "confidence": 0.99, "origin": "captured" }
+            ],
+            "description": "Continue past maintenance notice"
+          }
+        }
+      ],
+      "maxAttempts": 2,
+      "thenRetryStep": true
+    },
+    {
+      "id": "reauthenticate",
+      "description": "Log in again after the target application expires the session.",
+      "when": { "kind": "text_present", "text": "Your session has expired", "match": "contains", "framePath": ["content"] },
+      "do": [
+        { "type": "navigate", "url": "http://127.0.0.1:4599/t/alpha/msc/login" },
+        {
+          "type": "type",
+          "target": {
+            "role": "textbox",
+            "framePath": [],
+            "strategies": [
+              { "kind": "attribute", "attr": "name", "value": "u", "confidence": 0.98, "origin": "captured" }
+            ],
+            "description": "Operator ID field"
+          },
+          "value": "{{secrets.APP_USER}}",
+          "clearFirst": true
+        },
+        {
+          "type": "type",
+          "target": {
+            "role": "textbox",
+            "framePath": [],
+            "strategies": [
+              { "kind": "attribute", "attr": "name", "value": "p", "confidence": 0.98, "origin": "captured" }
+            ],
+            "description": "Operator password field"
+          },
+          "value": "{{secrets.APP_PASSWORD}}",
+          "clearFirst": true
+        },
+        {
+          "type": "click",
+          "target": {
+            "role": "button",
+            "name": "Sign On",
+            "framePath": [],
+            "strategies": [
+              { "kind": "aria", "role": "button", "name": "Sign On", "exact": true, "confidence": 0.99, "origin": "captured" }
+            ],
+            "description": "Sign On button"
+          }
+        }
+      ],
+      "maxAttempts": 1,
+      "thenRetryStep": true
+    }
+  ],
+  "successCheckpoint": {
+    "kind": "all",
+    "of": [
+      {
+        "kind": "control_present",
+        "target": {
+          "role": "cell",
+          "framePath": ["content"],
+          "scope": { "withinRowMatching": "Savings", "columnHeader": "Current Balance" },
+          "strategies": [
+            { "kind": "table_cell", "rowMatch": "Savings", "columnHeader": "Current Balance", "confidence": 0.99, "origin": "captured" }
+          ],
+          "description": "Current Balance cell on the Savings row"
+        }
+      },
+      { "kind": "text_present", "text": "{{inputs.memberId}}", "match": "contains", "framePath": ["content"] }
+    ],
+    "description": "Balance cell and requested member ID are visible on the member detail page"
+  },
+  "policy": {
+    "allowedOrigins": ["http://127.0.0.1:4599"],
+    "allowedPathPatterns": ["/**"],
+    "allowedActions": ["navigate", "click", "type", "select", "press", "wait", "extract", "assert"],
+    "maxRisk": "safe",
+    "requireApprovalFor": ["irreversible"],
+    "maxSteps": 20,
+    "timeoutMs": 120000
+  },
+  "provenance": {
+    "recordedAt": "2026-08-18T00:00:00.000Z",
+    "goal": "Look up a member savings balance",
+    "model": "hand-written-phase-4-fixture",
+    "discoveryRunId": "fixture_phase_4",
+    "surfaceSignature": { "browser": "chromium", "surface": "legacy-web" },
+    "llmStepCount": 0
+  },
+  "stability": { "runs": 0, "successes": 0, "businessOutcomes": 0, "failures": 0, "lastRunAt": null },
+  "tenantOverrides": {}
+}

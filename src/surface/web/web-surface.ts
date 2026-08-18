@@ -33,6 +33,15 @@ export class TargetNotResolvedError extends Error {
   }
 }
 
+export class AmbiguousTargetError extends Error {
+  readonly errorClass = "AMBIGUOUS_TARGET" as const;
+
+  constructor(target: TargetDescriptor, attempts: unknown[]) {
+    super(`More than one visible control matched ${target.description ?? target.role} in frame [${target.framePath.join(" / ")}]; attempts: ${JSON.stringify(attempts)}`);
+    this.name = "AmbiguousTargetError";
+  }
+}
+
 export class WebSurface implements Surface {
   readonly kind = "legacy-web" as const;
   readonly sessionId: string;
@@ -87,15 +96,21 @@ export class WebSurface implements Surface {
       decision: decision.decision,
       reason: decision.reason,
       resolvedUrl: action.type === "navigate" ? action.url : actingUrl,
+      approvalGranted: ctx.approvalGranted ?? false,
     });
-    if (decision.decision !== "allow") throw new PolicyBlockedError(decision.reason);
+    const allowedAfterApproval = decision.decision === "require_approval" && ctx.approvalGranted === true;
+    if (decision.decision !== "allow" && !allowedAfterApproval) throw new PolicyBlockedError(decision.reason);
 
     const timeoutMs = ctx.timeoutMs ?? 5000;
     let resolved: Resolved | null = null;
     let actingFrame: Frame | null = null;
     if (hasTarget(action)) {
       resolved = await this.resolve(action.target, { timeoutMs });
-      if (!resolved) throw new TargetNotResolvedError(action.target, this.resolver.lastAttempts);
+      if (!resolved) {
+        const ambiguous = this.resolver.lastAttempts.some((attempt) => attempt.matchCount > 1);
+        if (ambiguous) throw new AmbiguousTargetError(action.target, this.resolver.lastAttempts);
+        throw new TargetNotResolvedError(action.target, this.resolver.lastAttempts);
+      }
       // Locator/frame handles are intentionally reacquired by semantic frame path after
       // resolution and after navigating actions. They are never cached between operations.
       actingFrame = findFrame(this.session.page, action.target.framePath);
@@ -154,6 +169,10 @@ export class WebSurface implements Surface {
 
   async title(): Promise<string> {
     return this.session.page.title().catch(() => "");
+  }
+
+  async lastDocumentStatus(): Promise<{ url: string; status: number } | null> {
+    return this.session.lastDocumentStatus();
   }
 
   async domSnapshot(): Promise<string> {

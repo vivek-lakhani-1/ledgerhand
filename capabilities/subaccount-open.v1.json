@@ -1,0 +1,328 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "cap_subaccount_open",
+  "name": "member.subaccount.open",
+  "title": "Open a new member sub-account",
+  "version": "1.0.0",
+  "description": "Logs into the legacy console, completes the new sub-account form, and stops at the irreversible Confirm approval gate.",
+  "approval": "approved",
+  "target": {
+    "surface": "legacy-web",
+    "app": "meridian-msc",
+    "appVersion": "1.0",
+    "tenant": "alpha",
+    "entryUrl": "http://127.0.0.1:4599/t/alpha/msc/login",
+    "viewport": { "width": 1280, "height": 900 }
+  },
+  "inputs": [
+    {
+      "name": "memberId",
+      "type": "string",
+      "required": true,
+      "description": "The member identifier for the new sub-account.",
+      "pattern": "^[0-9]{5}$",
+      "sensitivity": "pii",
+      "example": "10001"
+    }
+  ],
+  "outputs": [],
+  "secretsRequired": ["APP_USER", "APP_PASSWORD"],
+  "steps": [
+    {
+      "id": "s1",
+      "description": "Enter the operator ID",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            { "kind": "attribute", "attr": "name", "value": "u", "confidence": 0.98, "origin": "captured" }
+          ],
+          "description": "Operator ID field"
+        },
+        "value": "{{secrets.APP_USER}}",
+        "clearFirst": true
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            { "kind": "attribute", "attr": "name", "value": "p", "confidence": 0.98, "origin": "captured" }
+          ],
+          "description": "Operator password field"
+        }
+      }
+    },
+    {
+      "id": "s2",
+      "description": "Enter the operator password",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            { "kind": "attribute", "attr": "name", "value": "p", "confidence": 0.98, "origin": "captured" }
+          ],
+          "description": "Operator password field"
+        },
+        "value": "{{secrets.APP_PASSWORD}}",
+        "clearFirst": true
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "button",
+          "name": "Sign On",
+          "framePath": [],
+          "strategies": [
+            { "kind": "aria", "role": "button", "name": "Sign On", "exact": true, "confidence": 0.99, "origin": "captured" }
+          ],
+          "description": "Sign On button"
+        }
+      }
+    },
+    {
+      "id": "s3",
+      "description": "Sign into the Member Services Console",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Sign On",
+          "framePath": [],
+          "strategies": [
+            { "kind": "aria", "role": "button", "name": "Sign On", "exact": true, "confidence": 0.99, "origin": "captured" }
+          ],
+          "description": "Sign On button"
+        }
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "link",
+          "name": "New Sub-Account",
+          "framePath": ["nav"],
+          "strategies": [
+            { "kind": "aria", "role": "link", "name": "New Sub-Account", "exact": true, "confidence": 0.99, "origin": "captured" }
+          ],
+          "description": "New Sub-Account navigation link"
+        }
+      }
+    },
+    {
+      "id": "s4",
+      "description": "Open the new sub-account form",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "link",
+          "name": "New Sub-Account",
+          "framePath": ["nav"],
+          "strategies": [
+            { "kind": "aria", "role": "link", "name": "New Sub-Account", "exact": true, "confidence": 0.99, "origin": "captured" }
+          ],
+          "description": "New Sub-Account navigation link"
+        }
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "combobox",
+          "framePath": ["content"],
+          "strategies": [
+            { "kind": "attribute", "attr": "name", "value": "f1", "confidence": 0.98, "origin": "captured" }
+          ],
+          "description": "Account type field"
+        }
+      }
+    },
+    {
+      "id": "s5",
+      "description": "Choose the Savings account type",
+      "action": {
+        "type": "select",
+        "target": {
+          "role": "combobox",
+          "framePath": ["content"],
+          "strategies": [
+            { "kind": "attribute", "attr": "name", "value": "f1", "confidence": 0.98, "origin": "captured" }
+          ],
+          "description": "Account type field"
+        },
+        "value": "Savings"
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "textbox",
+          "framePath": ["content"],
+          "strategies": [
+            { "kind": "attribute", "attr": "name", "value": "f2", "confidence": 0.98, "origin": "captured" }
+          ],
+          "description": "Initial deposit field"
+        }
+      }
+    },
+    {
+      "id": "s6",
+      "description": "Enter the initial deposit",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": ["content"],
+          "strategies": [
+            { "kind": "attribute", "attr": "name", "value": "f2", "confidence": 0.98, "origin": "captured" }
+          ],
+          "description": "Initial deposit field"
+        },
+        "value": "100.00",
+        "clearFirst": true
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "textbox",
+          "framePath": ["content"],
+          "strategies": [
+            { "kind": "attribute", "attr": "name", "value": "f3", "confidence": 0.98, "origin": "captured" }
+          ],
+          "description": "Purpose field"
+        }
+      }
+    },
+    {
+      "id": "s7",
+      "description": "Enter the sub-account purpose",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": ["content"],
+          "strategies": [
+            { "kind": "attribute", "attr": "name", "value": "f3", "confidence": 0.98, "origin": "captured" }
+          ],
+          "description": "Purpose field"
+        },
+        "value": "Emergency savings",
+        "clearFirst": true
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "button",
+          "name": "Review",
+          "framePath": ["content"],
+          "strategies": [
+            { "kind": "aria", "role": "button", "name": "Review", "exact": true, "confidence": 0.99, "origin": "captured" }
+          ],
+          "description": "Review sub-account button"
+        }
+      }
+    },
+    {
+      "id": "s8",
+      "description": "Review the new sub-account",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Review",
+          "framePath": ["content"],
+          "strategies": [
+            { "kind": "aria", "role": "button", "name": "Review", "exact": true, "confidence": 0.99, "origin": "captured" }
+          ],
+          "description": "Review sub-account button"
+        }
+      },
+      "postcondition": { "kind": "text_present", "text": "Review New Sub-Account", "match": "contains", "framePath": ["content"] }
+    },
+    {
+      "id": "s9",
+      "description": "Confirm creation of the sub-account",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Confirm",
+          "framePath": ["content"],
+          "strategies": [
+            { "kind": "aria", "role": "button", "name": "Confirm", "exact": true, "confidence": 0.99, "origin": "captured" }
+          ],
+          "description": "Irreversible Confirm button"
+        }
+      },
+      "risk": "irreversible",
+      "onFailure": "escalate",
+      "postcondition": { "kind": "text_present", "text": "SUB-ACCOUNT CREATED", "match": "contains", "framePath": ["content"] }
+    }
+  ],
+  "outcomes": [
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "description": "No member record was found for the requested member ID.",
+      "detect": { "kind": "text_present", "text": "No member record found", "match": "contains", "framePath": ["content"] },
+      "terminal": true,
+      "outputs": []
+    },
+    {
+      "code": "PERMISSION_DENIED",
+      "description": "The operator is not authorized to view the member account.",
+      "detect": { "kind": "text_present", "text": "not authorized to view", "match": "contains", "framePath": ["content"] },
+      "terminal": true,
+      "outputs": []
+    },
+    {
+      "code": "VALIDATION_ERROR",
+      "description": "The target application rejected the submitted form value.",
+      "detect": { "kind": "text_present", "text": "must be at least", "match": "contains", "framePath": ["content"] },
+      "terminal": true,
+      "outputs": [
+        {
+          "name": "validationMessage",
+          "type": "string",
+          "description": "Application validation message.",
+          "required": true,
+          "sensitivity": "public",
+          "source": {
+            "kind": "text_of",
+            "target": {
+              "role": "cell",
+              "framePath": ["content"],
+              "strategies": [
+                { "kind": "css", "selector": "table[bgcolor=\"#fff4f4\"] td", "confidence": 0.8, "origin": "derived" }
+              ],
+              "description": "Application validation message"
+            },
+            "transform": "trim"
+          }
+        }
+      ]
+    }
+  ],
+  "recoveries": [],
+  "successCheckpoint": { "kind": "text_present", "text": "Review New Sub-Account", "match": "contains", "framePath": ["content"] },
+  "policy": {
+    "allowedOrigins": ["http://127.0.0.1:4599"],
+    "allowedPathPatterns": ["/**"],
+    "allowedActions": ["navigate", "click", "type", "select", "press", "wait", "extract", "assert"],
+    "maxRisk": "irreversible",
+    "requireApprovalFor": ["irreversible"],
+    "maxSteps": 20,
+    "timeoutMs": 120000
+  },
+  "provenance": {
+    "recordedAt": "2026-08-18T00:00:00.000Z",
+    "goal": "Open a new sub-account through review",
+    "model": "hand-written-phase-4-fixture",
+    "discoveryRunId": "fixture_phase_4",
+    "surfaceSignature": { "browser": "chromium", "surface": "legacy-web" },
+    "llmStepCount": 0
+  },
+  "stability": { "runs": 0, "successes": 0, "businessOutcomes": 0, "failures": 0, "lastRunAt": null },
+  "tenantOverrides": {}
+}

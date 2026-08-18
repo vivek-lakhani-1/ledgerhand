@@ -22,6 +22,8 @@ export class BrowserSession {
   readonly control: SessionControl;
 
   private navigationListener?: (frame: import("playwright").Frame) => void;
+  private responseListener?: (response: import("playwright").Response) => void;
+  private lastDocument: { url: string; status: number } | null = null;
   private closed = false;
   private aborted = false;
 
@@ -43,6 +45,7 @@ export class BrowserSession {
     const context = await browser.newContext({ viewport: options.viewport });
     const page = await context.newPage();
     const session = new BrowserSession(browser, context, page, options.sessionId);
+    session.trackDocumentResponses();
     if (options.policy && options.logger) {
       session.configureNavigationPolicy(options.policy, options.logger, {
         abortOnPolicyViolation: options.abortOnPolicyViolation,
@@ -82,6 +85,27 @@ export class BrowserSession {
     this.page.on("framenavigated", this.navigationListener);
   }
 
+  /**
+   * Records the HTTP status of the most recent *document* response in any frame.
+   *
+   * Classifying an application error by scraping the error page's body text only works
+   * against an app whose error page you already know. The transport-level status is the
+   * generic signal, so replay can report SURFACE_ERROR for any 5xx without recognising the
+   * vendor's particular error copy.
+   */
+  trackDocumentResponses(): void {
+    if (this.responseListener) return;
+    this.responseListener = (response) => {
+      if (response.request().resourceType() !== "document") return;
+      this.lastDocument = { url: response.url(), status: response.status() };
+    };
+    this.page.on("response", this.responseListener);
+  }
+
+  lastDocumentStatus(): { url: string; status: number } | null {
+    return this.lastDocument;
+  }
+
   get wasAborted(): boolean {
     return this.aborted;
   }
@@ -92,6 +116,10 @@ export class BrowserSession {
     if (this.navigationListener) {
       this.page.off("framenavigated", this.navigationListener);
       this.navigationListener = undefined;
+    }
+    if (this.responseListener) {
+      this.page.off("response", this.responseListener);
+      this.responseListener = undefined;
     }
     await this.browser.close();
   }

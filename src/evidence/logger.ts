@@ -44,6 +44,14 @@ export class RunLogger {
     this.logPath = path.join(runDir, "run.jsonl");
   }
 
+  registerSecret(value: string | undefined): void {
+    this.redactor.registerSecret(value);
+  }
+
+  registerPii(value: string | undefined): void {
+    this.redactor.registerPii(value);
+  }
+
   emit(type: EventType, payload: EventPayload = {}): RunEvent {
     const event = this.redactor.redactJson({
       ts: new Date().toISOString(),

@@ -21,6 +21,19 @@ export class Redactor {
     this.piiValues = [...rules.piiValues].filter(Boolean).sort((a, b) => b.length - a.length);
   }
 
+  /** Register values discovered during a run before they can reach observability. */
+  registerSecret(value: string | undefined): void {
+    if (!value || this.secrets.includes(value)) return;
+    this.secrets.push(value);
+    this.secrets.sort((a, b) => b.length - a.length);
+  }
+
+  registerPii(value: string | undefined): void {
+    if (!value || this.piiValues.includes(value)) return;
+    this.piiValues.push(value);
+    this.piiValues.sort((a, b) => b.length - a.length);
+  }
+
   maskPii(value: string): string {
     if (value.length <= 2) return "***";
     return `${value[0]}${"*".repeat(value.length - 2)}${value[value.length - 1]}`;

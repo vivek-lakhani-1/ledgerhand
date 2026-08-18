@@ -23,6 +23,14 @@ export class EvidenceDir {
     fs.mkdirSync(path.join(this.runDir, "dom"), { recursive: true });
   }
 
+  registerSecret(value: string | undefined): void {
+    this.redactor.registerSecret(value);
+  }
+
+  registerPii(value: string | undefined): void {
+    this.redactor.registerPii(value);
+  }
+
   writeResult(result: ReplayResult): string {
     const resultPath = path.join(this.runDir, "result.json");
     fs.writeFileSync(resultPath, `${JSON.stringify(this.redactor.redactJson(result), null, 2)}\n`, "utf8");

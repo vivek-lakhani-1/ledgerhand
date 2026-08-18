@@ -13,6 +13,13 @@ export interface Surface {
   title(): Promise<string>;
   screenshot(opts?: { maskSensitive?: boolean }): Promise<Buffer>;
   domSnapshot(): Promise<string>;
+  /**
+   * Transport-level status of the most recent document load, when the surface has one.
+   * Lets replay classify an application error generically (any 5xx) instead of recognising
+   * a particular vendor's error-page wording. Surfaces without a transport (e.g. a native
+   * desktop app) return null and fall back to content-based detection.
+   */
+  lastDocumentStatus(): Promise<{ url: string; status: number } | null>;
   captureDescriptor(handle: ControlHandle): Promise<TargetDescriptor>;
 }
 
@@ -43,6 +50,8 @@ export interface ActContext {
   mode: "discovery" | "replay";
   timeoutMs?: number;
   resolvedUrl?: string;
+  /** Set only after the executor has received an approval decision. */
+  approvalGranted?: boolean;
 }
 
 export interface ControlHandle {
