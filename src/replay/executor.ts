@@ -21,6 +21,7 @@ import { InputValidationError, resolveTemplate, resolveTemplatesIn, TemplateErro
 export type EscalationRequest = {
   runId: string;
   capability: { id: string; version: string };
+  goal?: string;
   reason: string;
   atStepId: string;
   stepDescription: string;
@@ -188,7 +189,7 @@ export async function replay(capability: Capability, options: ReplayOptions): Pr
   const success = await waitForCheckpoint(successCheckpoint, options.surface, successCheckpoint.timeoutMs ?? cap.policy.timeoutMs, 100);
   await logCheckpoint(options, successCheckpoint, success, null, "success");
   if (!success.ok) {
-    return finish(await hardFailure(run, {
+    return finish(await failureWithEvidence(run, {
       class: "CHECKPOINT_FAILED",
       stepId: null,
       stepDescription: null,
@@ -196,7 +197,7 @@ export async function replay(capability: Capability, options: ReplayOptions): Pr
       observed: success.observed,
       message: "Capability success checkpoint was not satisfied",
       recoveryAttempts: [...run.recoveryAttempts],
-    }, undefined, "success-checkpoint"));
+    }, "success-checkpoint"));
   }
 
   let outputs: Record<string, unknown>;
@@ -204,7 +205,7 @@ export async function replay(capability: Capability, options: ReplayOptions): Pr
     outputs = await extractOutputs(cap.outputs, options.surface);
   } catch (error) {
     const outputName = error instanceof OutputExtractionError ? error.outputName : "declared output";
-    return finish(await hardFailure(run, {
+    return finish(await failureWithEvidence(run, {
       class: "CHECKPOINT_FAILED",
       stepId: null,
       stepDescription: null,
@@ -212,7 +213,7 @@ export async function replay(capability: Capability, options: ReplayOptions): Pr
       observed: errorMessage(error),
       message: errorMessage(error),
       recoveryAttempts: [...run.recoveryAttempts],
-    }, undefined, "output-extraction"));
+    }, "output-extraction"));
   }
 
   await captureScreenshot(options.evidence, options.surface, "success-checkpoint");
@@ -246,13 +247,20 @@ export function resolveForTenant(capability: Capability, tenant?: string): Capab
 
 type StepExecution =
   | { kind: "continue" }
+  | { kind: "retry" }
   | { kind: "return"; result: ReplayResult }
   | { kind: "escalated"; result: ReplayResult };
+
+type StepResumeState = {
+  /** At most two interventions may be used for one step. */
+  escalationCount: number;
+};
 
 async function executeStep(run: RunContext, step: Step, context: { inputs: Record<string, unknown>; secrets: Record<string, unknown>; env: Record<string, string | undefined> }): Promise<StepExecution> {
   const { options, cap } = run;
   let retryCount = 0;
   let approvalGranted = false;
+  const resumeState: StepResumeState = { escalationCount: 0 };
 
   while (true) {
     options.logger.emit("step.start", { stepId: step.id, description: step.description, attempt: retryCount });
@@ -262,7 +270,7 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
       const result = await waitForCheckpoint(checkpoint, options.surface, step.timeoutMs, 100);
       await logCheckpoint(options, checkpoint, result, step.id, `precondition-${index}`);
       if (!result.ok) {
-        const failure = await hardFailure(run, {
+        const failure = await handleStepFailure(run, {
           class: "PRECONDITION_FAILED",
           stepId: step.id,
           stepDescription: step.description,
@@ -270,8 +278,9 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
           observed: result.observed,
           message: `Step ${step.id} precondition failed`,
           recoveryAttempts: [...run.recoveryAttempts],
-        }, step, "precondition-failure");
-        return { kind: failure.status === "escalated" ? "escalated" : "return", result: failure };
+        }, step, "precondition-failure", context, resumeState, false);
+        if (failure.kind === "retry") { retryCount += 1; continue; }
+        return failure;
       }
     }
 
@@ -279,13 +288,14 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
     try {
       action = resolveActionTemplates(step.action, context);
     } catch (error) {
-      const result = await hardFailure(run, {
+      const result = await handleStepFailure(run, {
         ...inputFailure(error),
         stepId: step.id,
         stepDescription: step.description,
         recoveryAttempts: [...run.recoveryAttempts],
-      }, step, "template-failure");
-      return { kind: result.status === "escalated" ? "escalated" : "return", result };
+      }, step, "template-failure", context, resumeState, false);
+      if (result.kind === "retry") { retryCount += 1; continue; }
+      return result;
     }
 
     const actingUrl = action.type === "navigate" ? action.url : await options.surface.url();
@@ -302,7 +312,7 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
       preflight: true,
     });
     if (policyDecision.decision === "deny") {
-      const result = await hardFailure(run, {
+      const result = await handleStepFailure(run, {
         class: "POLICY_BLOCKED",
         stepId: step.id,
         stepDescription: step.description,
@@ -310,15 +320,22 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
         observed: policyDecision.reason,
         message: policyDecision.reason,
         recoveryAttempts: [...run.recoveryAttempts],
-      }, step, "policy-blocked");
-      return { kind: result.status === "escalated" ? "escalated" : "return", result };
+      }, step, "policy-blocked", context, resumeState, false);
+      if (result.kind === "retry") { retryCount += 1; continue; }
+      return result;
     }
 
     if (policyDecision.decision === "require_approval" && !approvalGranted) {
       const escalation = await raiseEscalation(run, step, "RISKY_ACTION_APPROVAL", describeAction(action), policyDecision.reason, action);
       if (escalation.kind === "result") return { kind: "escalated", result: escalation.result };
       if (escalation.decision === "abort") {
-        const result = await hardFailure(run, {
+        options.logger.emit("human.resolved", {
+          stepId: step.id,
+          decision: escalation.decision,
+          note: escalation.note,
+          resumeBranch: "aborted",
+        });
+        const result = await failureWithEvidence(run, {
           class: "POLICY_BLOCKED",
           stepId: step.id,
           stepDescription: step.description,
@@ -326,9 +343,15 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
           observed: escalation.note ?? "operator aborted approval",
           message: "Irreversible action was not approved",
           recoveryAttempts: [...run.recoveryAttempts],
-        }, undefined, "approval-aborted");
+        }, "approval-aborted");
         return { kind: "return", result };
       }
+      options.logger.emit("human.resolved", {
+        stepId: step.id,
+        decision: escalation.decision,
+        note: escalation.note,
+        resumeBranch: "approval_granted",
+      });
       approvalGranted = true;
     }
 
@@ -347,7 +370,7 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
         await backoff(step.retries.backoffMs);
         continue;
       }
-      const result = await hardFailure(run, {
+      const result = await handleStepFailure(run, {
         class: errorClass,
         stepId: step.id,
         stepDescription: step.description,
@@ -355,8 +378,9 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
         observed: await observedSurface(options.surface, error),
         message: errorMessage(error),
         recoveryAttempts: [...run.recoveryAttempts],
-      }, step, "action-failure");
-      return { kind: result.status === "escalated" ? "escalated" : "return", result };
+      }, step, "action-failure", context, resumeState, true);
+      if (result.kind === "retry") { retryCount += 1; continue; }
+      return result;
     }
 
     let outcomeResult: Awaited<ReturnType<typeof classify>>;
@@ -364,7 +388,7 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
       outcomeResult = await classify(cap, options.surface);
     } catch (error) {
       if (error instanceof OutputExtractionError) {
-        const result = await hardFailure(run, {
+        const result = await handleStepFailure(run, {
           class: "CHECKPOINT_FAILED",
           stepId: step.id,
           stepDescription: step.description,
@@ -372,10 +396,11 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
           observed: error.message,
           message: error.message,
           recoveryAttempts: [...run.recoveryAttempts],
-        }, step, "outcome-output-failure");
-        return { kind: result.status === "escalated" ? "escalated" : "return", result };
+        }, step, "outcome-output-failure", context, resumeState, true);
+        if (result.kind === "retry") { retryCount += 1; continue; }
+        return result;
       }
-      const result = await hardFailure(run, {
+      const result = await handleStepFailure(run, {
         class: "SURFACE_ERROR",
         stepId: step.id,
         stepDescription: step.description,
@@ -383,8 +408,9 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
         observed: errorMessage(error),
         message: errorMessage(error),
         recoveryAttempts: [...run.recoveryAttempts],
-      }, step, "outcome-classification-failure");
-      return { kind: result.status === "escalated" ? "escalated" : "return", result };
+      }, step, "outcome-classification-failure", context, resumeState, true);
+      if (result.kind === "retry") { retryCount += 1; continue; }
+      return result;
     }
     if (outcomeResult.kind === "outcome") {
       await captureScreenshot(options.evidence, options.surface, `${step.id}-outcome-${outcomeResult.outcome.code}`);
@@ -411,7 +437,7 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
     try {
       recovery = await tryRecover(step, cap, options.surface, run.recoveryState);
     } catch (error) {
-      const result = await hardFailure(run, {
+      const result = await handleStepFailure(run, {
         class: classifyError(error),
         stepId: step.id,
         stepDescription: step.description,
@@ -419,8 +445,9 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
         observed: await observedSurface(options.surface, error),
         message: errorMessage(error),
         recoveryAttempts: [...run.recoveryAttempts],
-      }, step, "recovery-failure");
-      return { kind: result.status === "escalated" ? "escalated" : "return", result };
+      }, step, "recovery-failure", context, resumeState, true);
+      if (result.kind === "retry") { retryCount += 1; continue; }
+      return result;
     }
     if (recovery) {
       run.recoveryAttempts.push(recovery.applied.id);
@@ -447,7 +474,7 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
 
     const appError = await findSurfaceError(options.surface);
     if (appError) {
-      const result = await hardFailure(run, {
+      const result = await handleStepFailure(run, {
         class: "SURFACE_ERROR",
         stepId: step.id,
         stepDescription: step.description,
@@ -455,8 +482,9 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
         observed: appError,
         message: "Target application returned an application error page",
         recoveryAttempts: [...run.recoveryAttempts],
-      }, step, "surface-error");
-      return { kind: result.status === "escalated" ? "escalated" : "return", result };
+      }, step, "surface-error", context, resumeState, true);
+      if (result.kind === "retry") { retryCount += 1; continue; }
+      return result;
     }
 
     if (action.type === "wait" || action.type === "assert") {
@@ -464,7 +492,7 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
       const checkpointResult = await waitForCheckpoint(actionCheckpoint, options.surface, actionCheckpoint.timeoutMs ?? step.timeoutMs, 100);
       await logCheckpoint(options, actionCheckpoint, checkpointResult, step.id, `${action.type}-action`);
       if (!checkpointResult.ok) {
-        const failure = await hardFailure(run, {
+        const failure = await handleStepFailure(run, {
           class: "CHECKPOINT_FAILED",
           stepId: step.id,
           stepDescription: step.description,
@@ -472,8 +500,9 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
           observed: checkpointResult.observed,
           message: `${action.type} checkpoint failed`,
           recoveryAttempts: [...run.recoveryAttempts],
-        }, step, `${action.type}-failure`);
-        return { kind: failure.status === "escalated" ? "escalated" : "return", result: failure };
+        }, step, `${action.type}-failure`, context, resumeState, true);
+        if (failure.kind === "retry") { retryCount += 1; continue; }
+        return failure;
       }
     }
 
@@ -482,7 +511,7 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
       const postcondition = await waitForCheckpoint(postconditionCheckpoint, options.surface, step.timeoutMs, 100);
       await logCheckpoint(options, postconditionCheckpoint, postcondition, step.id, "postcondition");
       if (!postcondition.ok) {
-        const failure = await hardFailure(run, {
+        const failure = await handleStepFailure(run, {
           class: "CHECKPOINT_FAILED",
           stepId: step.id,
           stepDescription: step.description,
@@ -490,8 +519,9 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
           observed: postcondition.observed,
           message: `Step ${step.id} postcondition failed`,
           recoveryAttempts: [...run.recoveryAttempts],
-        }, step, "postcondition-failure");
-        return { kind: failure.status === "escalated" ? "escalated" : "return", result: failure };
+        }, step, "postcondition-failure", context, resumeState, true);
+        if (failure.kind === "retry") { retryCount += 1; continue; }
+        return failure;
       }
     }
 
@@ -506,33 +536,145 @@ async function executeStep(run: RunContext, step: Step, context: { inputs: Recor
   }
 }
 
-async function hardFailure(run: RunContext, failure: FailureDetail, step: Step | undefined, label: string): Promise<ReplayResult> {
-  if (step?.onFailure === "escalate") {
-    const escalation = await raiseEscalation(run, step, "UNRECOVERABLE", failure.expected, failure.observed, step.action);
-    if (escalation.kind === "result") return escalation.result;
-    if (escalation.decision !== "abort") {
-      // Phase 6 supplies the live resume semantics. For this phase, a supplied resume/approve
-      // decision conservatively re-checks the current postcondition and only advances when it is
-      // already satisfied; otherwise the failure remains explicit.
-      if (step.postcondition) {
-        const resumed = await evaluateCheckpoint(step.postcondition, run.options.surface, Date.now() + step.timeoutMs);
-        if (resumed.ok) {
-          run.options.logger.emit("human.resolved", { stepId: step.id, decision: escalation.decision, note: escalation.note });
-          return {
-            status: "business_outcome",
-            runId: run.runId,
-            capability: { id: run.cap.id, version: run.cap.version },
-            code: "HUMAN_COMPLETED_STEP",
-            message: "Human intervention satisfied the step checkpoint",
-            outputs: {},
-            atStepId: step.id,
-            evidenceDir: run.options.evidence.runDir,
-          };
-        }
-      }
+async function handleStepFailure(
+  run: RunContext,
+  failure: FailureDetail,
+  step: Step,
+  label: string,
+  context: { inputs: Record<string, unknown>; secrets: Record<string, unknown>; env: Record<string, string | undefined> },
+  resumeState: StepResumeState,
+  stepRan: boolean,
+): Promise<StepExecution> {
+  if (step.onFailure !== "escalate") {
+    return { kind: "return", result: await failureWithEvidence(run, failure, label) };
+  }
+
+  if (resumeState.escalationCount >= 2) {
+    return checkpointFailureAfterHuman(run, step, failure, `${failure.observed}; no further human escalation is permitted for this step`);
+  }
+
+  resumeState.escalationCount += 1;
+  const escalation = await raiseEscalation(run, step, "UNRECOVERABLE", failure.expected, failure.observed, step.action);
+  if (escalation.kind === "result") return { kind: "escalated", result: escalation.result };
+  if (escalation.decision === "abort") {
+    run.options.logger.emit("human.resolved", {
+      stepId: step.id,
+      decision: escalation.decision,
+      note: escalation.note,
+      resumeBranch: "aborted",
+    });
+    return { kind: "return", result: await failureWithEvidence(run, failure, label) };
+  }
+
+  const firstInspection = await inspectResumeState(run, step, context, escalation.decision, escalation.note, stepRan);
+  if (firstInspection.kind !== "neither") return firstInspection.execution;
+  if (resumeState.escalationCount >= 2) {
+    run.options.logger.emit("human.resolved", {
+      stepId: step.id,
+      decision: escalation.decision,
+      note: escalation.note,
+      resumeBranch: "re_escalated_failed",
+    });
+    return checkpointFailureAfterHuman(run, step, failure, firstInspection.observed);
+  }
+
+  run.options.logger.emit("human.resolved", {
+    stepId: step.id,
+    decision: escalation.decision,
+    note: escalation.note,
+    resumeBranch: "re_escalated",
+  });
+  resumeState.escalationCount += 1;
+  const second = await raiseEscalation(run, step, "UNRECOVERABLE", failure.expected, firstInspection.observed, step.action);
+  if (second.kind === "result") return { kind: "escalated", result: second.result };
+  if (second.decision === "abort") {
+    run.options.logger.emit("human.resolved", {
+      stepId: step.id,
+      decision: second.decision,
+      note: second.note,
+      resumeBranch: "re_escalated_failed",
+    });
+    return checkpointFailureAfterHuman(run, step, failure, `${firstInspection.observed}; second intervention was aborted`);
+  }
+
+  const secondInspection = await inspectResumeState(run, step, context, second.decision, second.note, stepRan);
+  if (secondInspection.kind === "postcondition" || secondInspection.kind === "preconditions") {
+    return secondInspection.execution;
+  }
+  run.options.logger.emit("human.resolved", {
+    stepId: step.id,
+    decision: second.decision,
+    note: second.note,
+    resumeBranch: "re_escalated_failed",
+  });
+  return checkpointFailureAfterHuman(run, step, failure, secondInspection.observed);
+}
+
+type ResumeInspection =
+  | { kind: "postcondition"; execution: { kind: "continue" } }
+  | { kind: "preconditions"; execution: { kind: "retry" } }
+  | { kind: "neither"; observed: string };
+
+async function inspectResumeState(
+  run: RunContext,
+  step: Step,
+  context: { inputs: Record<string, unknown>; secrets: Record<string, unknown>; env: Record<string, string | undefined> },
+  decision: "resume" | "approve",
+  note: string | undefined,
+  stepRan: boolean,
+): Promise<ResumeInspection> {
+  if (stepRan && step.postcondition) {
+    const postcondition = resolveTemplatesIn(step.postcondition, context);
+    const post = await evaluateCheckpoint(postcondition, run.options.surface, Date.now() + step.timeoutMs);
+    await logCheckpoint(run.options, postcondition, post, step.id, "postcondition-after-human");
+    if (post.ok) {
+      run.options.logger.emit("human.resolved", {
+        stepId: step.id,
+        decision,
+        note,
+        resumeBranch: "postcondition_satisfied",
+      });
+      run.options.logger.emit("step.end", { stepId: step.id, description: step.description, summary: "✓ postcondition after human" });
+      return { kind: "postcondition", execution: { kind: "continue" } };
     }
   }
-  return failureWithEvidence(run, failure, label);
+
+  const observations: string[] = [];
+  for (let index = 0; index < step.preconditions.length; index += 1) {
+    const precondition = resolveTemplatesIn(step.preconditions[index], context);
+    const pre = await evaluateCheckpoint(precondition, run.options.surface, Date.now() + step.timeoutMs);
+    await logCheckpoint(run.options, precondition, pre, step.id, `precondition-after-human-${index}`);
+    observations.push(pre.observed);
+    if (!pre.ok) return { kind: "neither", observed: observations.join("; ") };
+  }
+
+  run.options.logger.emit("human.resolved", {
+    stepId: step.id,
+    decision,
+    note,
+    resumeBranch: "preconditions_satisfied_rerun",
+  });
+  return { kind: "preconditions", execution: { kind: "retry" } };
+}
+
+async function checkpointFailureAfterHuman(
+  run: RunContext,
+  step: Step,
+  original: FailureDetail,
+  observed: string,
+): Promise<StepExecution> {
+  return {
+    kind: "return",
+    result: await failureWithEvidence(run, {
+      class: "CHECKPOINT_FAILED",
+      stepId: step.id,
+      stepDescription: step.description,
+      expected: step.postcondition ? describeCheckpoint(step.postcondition) : "the step preconditions",
+      observed,
+      message: `Step ${step.id} remained unsatisfied after human intervention`,
+      recoveryAttempts: original.recoveryAttempts,
+    }, "human-resume-checkpoint-failure"),
+  };
 }
 
 async function failureWithEvidence(run: RunContext, failure: FailureDetail, label: string): Promise<ReplayResult> {
@@ -587,6 +729,7 @@ async function raiseEscalation(
   const decision = await run.options.escalate({
     runId: run.runId,
     capability: { id: run.cap.id, version: run.cap.version },
+    goal: run.cap.provenance.goal,
     reason,
     atStepId: step.id,
     stepDescription: step.description,
@@ -597,7 +740,6 @@ async function raiseEscalation(
     domPath,
     evidenceDir: run.options.evidence.runDir,
   });
-  run.options.logger.emit("human.resolved", { stepId: step.id, decision: decision.decision, note: decision.note });
   return { kind: "decision", ...decision };
 }
 

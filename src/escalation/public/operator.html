@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ledgerhand Operator Console</title>
+  <style>
+    :root { color-scheme: dark; font: 14px/1.4 system-ui, sans-serif; }
+    body { margin: 0; background: #11151b; color: #e9eef5; }
+    main { display: grid; grid-template-columns: minmax(300px, 0.8fr) minmax(480px, 1.2fr); gap: 16px; min-height: 100vh; padding: 16px; box-sizing: border-box; }
+    section { background: #1a2029; border: 1px solid #303a47; border-radius: 8px; padding: 14px; min-width: 0; }
+    h1, h2, h3 { margin: 0 0 10px; }
+    h1 { font-size: 18px; } h2 { font-size: 15px; } h3 { font-size: 13px; color: #aebbd0; }
+    #interventions { display: grid; gap: 7px; margin-bottom: 14px; }
+    .intervention { width: 100%; text-align: left; padding: 9px; color: inherit; background: #222a35; border: 1px solid #394554; border-radius: 5px; cursor: pointer; }
+    .intervention.selected { border-color: #63b3ed; background: #26394d; }
+    .status { float: right; color: #9bd18b; font-size: 12px; }
+    dl { display: grid; grid-template-columns: 118px 1fr; gap: 6px 10px; margin: 0; }
+    dt { color: #9baabd; } dd { margin: 0; overflow-wrap: anywhere; }
+    #frame { width: 100%; max-height: 62vh; object-fit: contain; background: #090b0e; border: 1px solid #3a4653; cursor: crosshair; }
+    #holder { padding: 7px 9px; margin-bottom: 10px; border-radius: 4px; background: #202b38; font-weight: 600; }
+    .controls { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+    button, input, select { font: inherit; color: inherit; background: #252e3a; border: 1px solid #445264; border-radius: 4px; padding: 7px 9px; }
+    button { cursor: pointer; } button:hover { border-color: #79b8ec; }
+    input[type="text"] { width: min(100%, 440px); box-sizing: border-box; }
+    .row { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 8px; }
+    #message { min-height: 20px; color: #f2c879; margin-top: 8px; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; color: #c3cede; }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } #frame { max-height: none; } }
+  </style>
+</head>
+<body>
+<main>
+  <section>
+    <h1>Interventions</h1>
+    <div id="interventions">Loading…</div>
+    <h2>Why it stopped</h2>
+    <div id="context"><p>Select an intervention.</p></div>
+  </section>
+  <section>
+    <h1>Live session</h1>
+    <div id="holder">No intervention selected</div>
+    <img id="frame" alt="Live page screenshot">
+    <div class="row">
+      <input id="text" type="text" placeholder="Text to type into the live page">
+      <button id="send">Send</button>
+      <select id="key" aria-label="Key to press">
+        <option>Enter</option><option>Tab</option><option>Escape</option>
+      </select>
+      <button id="press">Press key</button>
+    </div>
+    <div class="controls">
+      <button id="claim">Take control</button>
+      <button id="resume">Resume</button>
+      <button id="approve">Approve</button>
+      <button id="abort">Abort</button>
+    </div>
+    <div class="row">
+      <input id="note" type="text" placeholder="Resolution note">
+    </div>
+    <div id="message" role="status"></div>
+  </section>
+</main>
+<script>
+(() => {
+  const state = { selected: new URLSearchParams(location.search).get("intervention"), detail: null, frameTimer: null };
+  const $ = (id) => document.getElementById(id);
+  const showMessage = (message) => { $("message").textContent = message; };
+  const request = async (url, init) => {
+    const response = await fetch(url, { cache: "no-store", ...init });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.message || body.reason || body.error || `HTTP ${response.status}`);
+    return body;
+  };
+  const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+
+  async function refreshList() {
+    try {
+      const items = await request("/api/interventions");
+      $("interventions").innerHTML = items.length ? items.map((item) => `<button class="intervention ${item.id === state.selected ? "selected" : ""}" data-id="${escapeHtml(item.id)}"><span>${escapeHtml(item.reason.code)}</span><span class="status">${escapeHtml(item.status)}</span><br><small>${escapeHtml(item.stepDescription || item.goal || item.id)}</small></button>`).join("") : "<p>No open interventions.</p>";
+      document.querySelectorAll(".intervention").forEach((button) => button.addEventListener("click", () => select(button.dataset.id)));
+      if (!state.selected && items[0]) await select(items[0].id);
+      else if (state.selected) await select(state.selected);
+    } catch (error) { showMessage(error.message); }
+  }
+
+  async function select(id) {
+    if (!id) return;
+    state.selected = id;
+    try {
+      state.detail = await request(`/api/interventions/${encodeURIComponent(id)}`);
+      const item = state.detail;
+      $("context").innerHTML = `<dl><dt>Capability</dt><dd>${escapeHtml(item.capabilityId || "—")} ${escapeHtml(item.capabilityVersion || "")}</dd><dt>Goal</dt><dd>${escapeHtml(item.goal || "—")}</dd><dt>Step</dt><dd>${escapeHtml(item.atStepId || "—")} — ${escapeHtml(item.stepDescription || "—")}</dd><dt>Reason</dt><dd>${escapeHtml(item.reason && item.reason.code)} — ${escapeHtml(item.reason && item.reason.detail)}</dd><dt>Expected</dt><dd>${escapeHtml(item.expected || "—")}</dd><dt>Observed</dt><dd>${escapeHtml(item.observed || "—")}</dd><dt>Run</dt><dd>${escapeHtml(item.runId)}</dd><dt>URL</dt><dd>${escapeHtml(item.context && item.context.url)}</dd><dt>Title</dt><dd>${escapeHtml(item.context && item.context.title)}</dd></dl>`;
+      $("holder").textContent = item.control ? `Control: ${item.control.holder}` : "Control: unavailable";
+      startFrame(item.sessionId);
+    } catch (error) { showMessage(error.message); }
+  }
+
+  function startFrame(sessionId) {
+    if (state.frameTimer) clearInterval(state.frameTimer);
+    if (!sessionId) { $("frame").removeAttribute("src"); return; }
+    const refresh = () => { $("frame").src = `/api/session/${encodeURIComponent(sessionId)}/frame?ts=${Date.now()}`; };
+    refresh();
+    state.frameTimer = setInterval(refresh, 500);
+  }
+
+  async function sendInput(body) {
+    if (!state.detail || !state.detail.sessionId) return showMessage("No live session is attached.");
+    try { await request(`/api/session/${encodeURIComponent(state.detail.sessionId)}/input`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }); showMessage("Input sent."); await select(state.selected); }
+    catch (error) { showMessage(error.message); }
+  }
+
+  $("frame").addEventListener("click", (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const image = event.currentTarget;
+    sendInput({ kind: "click", x: (event.clientX - rect.left) * image.naturalWidth / rect.width, y: (event.clientY - rect.top) * image.naturalHeight / rect.height });
+  });
+  $("send").addEventListener("click", () => { const value = $("text").value; if (value) sendInput({ kind: "type", text: value }); });
+  $("press").addEventListener("click", () => sendInput({ kind: "key", key: $("key").value }));
+  $("claim").addEventListener("click", async () => { try { await request(`/api/interventions/${encodeURIComponent(state.selected)}/claim`, { method: "POST" }); showMessage("You hold control."); await select(state.selected); } catch (error) { showMessage(error.message); } });
+  const resolve = async (decision) => { try { await request(`/api/interventions/${encodeURIComponent(state.selected)}/resolve`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ decision, note: $("note").value }) }); showMessage(`Resolution recorded: ${decision}`); await select(state.selected); } catch (error) { showMessage(error.message); } };
+  $("resume").addEventListener("click", () => resolve("resume"));
+  $("approve").addEventListener("click", () => resolve("approve"));
+  $("abort").addEventListener("click", () => resolve("abort"));
+  refreshList();
+  setInterval(refreshList, 1000);
+})();
+</script>
+</body>
+</html>
