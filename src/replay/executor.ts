@@ -939,15 +939,8 @@ function hasTarget(action: Action): action is Action & { target: TargetDescripto
   return "target" in action && action.target !== undefined;
 }
 
-/**
- * Detects that the application itself failed, as opposed to the flow reaching an expected
- * business outcome.
- *
- * The primary signal is the transport status: any 5xx document response is an application
- * error regardless of what the error page says. Matching error-page copy is the fallback for
- * apps that return a "friendly" error with HTTP 200 - a real pattern in legacy systems - and
- * for surfaces that expose no transport at all.
- */
+// The app broke, as opposed to the flow hitting an expected outcome. Status first; error-page
+// text is the fallback for legacy apps that serve a friendly error with HTTP 200.
 async function findSurfaceError(surface: Surface): Promise<string | null> {
   try {
     const document = await surface.lastDocumentStatus();

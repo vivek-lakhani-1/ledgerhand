@@ -2,11 +2,11 @@
 
 Curated runs showing the thread end to end. Each directory has:
 
-* `capability.json` — the artifact the run executed, after tenant resolution
-* `run.jsonl` — structured, redacted event log, one JSON object per line
-* `result.json` — the `ReplayResult` returned to the caller
-* `screenshots/` — entry, each passed checkpoint, and always on outcome or failure
-* `dom/` — DOM snapshot, written on failure and escalation
+* `capability.json` - the artifact the run executed, after tenant resolution
+* `run.jsonl` - structured, redacted event log, one JSON object per line
+* `result.json` - the `ReplayResult` returned to the caller
+* `screenshots/` - entry, each passed checkpoint, and always on outcome or failure
+* `dom/` - DOM snapshot, written on failure and escalation
 
 Directory names are labels I added; the original `runId` is still inside every file.
 
@@ -48,7 +48,7 @@ Run 03's `result.json` carries enough to debug without opening the log:
   "stepId": "s3",
   "stepDescription": "Sign into the Member Services Console",
   "expected": "the target application to return a usable page",
-  "observed": "HTTP 500 from http://127.0.0.1:4599/t/alpha/msc/search — … APPLICATION ERROR - REF 0x5A2"
+  "observed": "HTTP 500 from http://127.0.0.1:4599/t/alpha/msc/search ... APPLICATION ERROR - REF 0x5A2"
 }
 ```
 
