@@ -1,0 +1,882 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "cap_sign_in_as_the",
+  "name": "sign.in.as.the",
+  "title": "Sign In As The",
+  "version": "1.0.0",
+  "description": "Sign in as the operator, look up member 10001, and read their Savings account balance",
+  "approval": "draft",
+  "target": {
+    "surface": "legacy-web",
+    "app": "meridian-msc",
+    "tenant": null,
+    "entryUrl": "http://127.0.0.1:4599/t/alpha/msc/login",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    }
+  },
+  "inputs": [
+    {
+      "name": "memberId",
+      "type": "string",
+      "required": true,
+      "description": "The member identifier to look up in the Member Services Console",
+      "sensitivity": "pii",
+      "example": 10001
+    }
+  ],
+  "outputs": [
+    {
+      "name": "savingsBalance",
+      "type": "currency",
+      "description": "Current balance of the member's Savings account",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "name": "1250.75",
+          "nameMatch": "exact",
+          "framePath": [
+            "content"
+          ],
+          "scope": {
+            "withinRowMatching": "90000001",
+            "columnHeader": "Current Balance"
+          },
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "cell",
+              "name": "1250.75",
+              "exact": true,
+              "confidence": 0.95,
+              "origin": "captured"
+            },
+            {
+              "kind": "table_cell",
+              "rowMatch": "90000001",
+              "columnHeader": "Current Balance",
+              "confidence": 0.85,
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "cell",
+              "index": 12,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "table:nth-of-type(3) > tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(4)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "cell 1250.75"
+        },
+        "transform": "currency_to_number"
+      }
+    },
+    {
+      "name": "validationMessage",
+      "type": "string",
+      "description": "The validation message returned by the target application.",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "generic",
+          "nameMatch": "exact",
+          "framePath": [
+            "content"
+          ],
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "body",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "Validation message text"
+        },
+        "transform": "trim"
+      }
+    }
+  ],
+  "secretsRequired": [
+    "APP_USER",
+    "APP_PASSWORD"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "description": "Enter the operator ID to sign on.",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "nameMatch": "exact",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "u",
+              "confidence": 0.7,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "type",
+              "value": "text",
+              "confidence": "0.«redacted:pii»",
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "textbox",
+              "index": 0,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "textbox near Operator ID:"
+        },
+        "value": "{{secrets.APP_USER}}",
+        "clearFirst": true
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "textbox",
+          "nameMatch": "exact",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "u",
+              "confidence": 0.7,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "type",
+              "value": "text",
+              "confidence": "0.«redacted:pii»",
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "textbox",
+              "index": 0,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "textbox near Operator ID:"
+        },
+        "description": "the field that was filled is present"
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s2",
+      "description": "Enter the operator password to sign on.",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "nameMatch": "exact",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "p",
+              "confidence": 0.7,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "type",
+              "value": "password",
+              "confidence": "0.«redacted:pii»",
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "textbox",
+              "index": 1,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "textbox near Password:"
+        },
+        "value": "{{secrets.APP_PASSWORD}}",
+        "clearFirst": true
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "textbox",
+          "nameMatch": "exact",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "p",
+              "confidence": 0.7,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "type",
+              "value": "password",
+              "confidence": "0.«redacted:pii»",
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "textbox",
+              "index": 1,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "textbox near Password:"
+        },
+        "description": "the field that was filled is present"
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s3",
+      "description": "Submit the sign-on form to authenticate the operator.",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Sign On",
+          "nameMatch": "exact",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Sign On",
+              "exact": true,
+              "confidence": 0.95,
+              "origin": "captured"
+            },
+            {
+              "kind": "text",
+              "text": "Sign On",
+              "exact": true,
+              "confidence": 0.8,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "value",
+              "value": "Sign On",
+              "confidence": "0.«redacted:pii»",
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "type",
+              "value": "submit",
+              "confidence": "0.«redacted:pii»",
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "button",
+              "index": 0,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(3) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "button Sign On"
+        }
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "text_present",
+        "text": "Enter an identifier and retrieve the member record.",
+        "match": "contains",
+        "framePath": [
+          "content"
+        ]
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s4",
+      "description": "Enter the member ID to look up.",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "nameMatch": "exact",
+          "framePath": [
+            "content"
+          ],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "q",
+              "confidence": 0.7,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "type",
+              "value": "text",
+              "confidence": "0.«redacted:pii»",
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "textbox",
+              "index": 0,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "textbox near Member ID:"
+        },
+        "value": "{{inputs.memberId}}",
+        "clearFirst": true
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "textbox",
+          "nameMatch": "exact",
+          "framePath": [
+            "content"
+          ],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "q",
+              "confidence": 0.7,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "type",
+              "value": "text",
+              "confidence": "0.«redacted:pii»",
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "textbox",
+              "index": 0,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "textbox near Member ID:"
+        },
+        "description": "the field that was filled is present"
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s5",
+      "description": "Retrieve the member record for the entered member ID.",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Retrieve",
+          "nameMatch": "exact",
+          "framePath": [
+            "content"
+          ],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Retrieve",
+              "exact": true,
+              "confidence": 0.95,
+              "origin": "captured"
+            },
+            {
+              "kind": "text",
+              "text": "Retrieve",
+              "exact": true,
+              "confidence": 0.8,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "value",
+              "value": "Retrieve",
+              "confidence": "0.«redacted:pii»",
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "type",
+              "value": "submit",
+              "confidence": "0.«redacted:pii»",
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "button",
+              "index": 0,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "button Retrieve"
+        }
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "cell",
+          "name": "1250.75",
+          "nameMatch": "exact",
+          "framePath": [
+            "content"
+          ],
+          "scope": {
+            "withinRowMatching": "90000001",
+            "columnHeader": "Current Balance"
+          },
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "cell",
+              "name": "1250.75",
+              "exact": true,
+              "confidence": 0.95,
+              "origin": "captured"
+            },
+            {
+              "kind": "table_cell",
+              "rowMatch": "90000001",
+              "columnHeader": "Current Balance",
+              "confidence": 0.85,
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "cell",
+              "index": 12,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "table:nth-of-type(3) > tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(4)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "cell 1250.75"
+        },
+        "description": "the page holding the extracted data has loaded"
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s6",
+      "description": "cell 1250.75",
+      "action": {
+        "type": "extract",
+        "outputs": [
+          "savingsBalance"
+        ]
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    }
+  ],
+  "outcomes": [
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "description": "No member record was found for the requested identifier.",
+      "detect": {
+        "kind": "text_present",
+        "text": "No member record found",
+        "match": "contains"
+      },
+      "terminal": true,
+      "outputs": []
+    },
+    {
+      "code": "PERMISSION_DENIED",
+      "description": "The operator is not authorized to view the requested account.",
+      "detect": {
+        "kind": "text_present",
+        "text": "not authorized to view",
+        "match": "contains"
+      },
+      "terminal": true,
+      "outputs": []
+    },
+    {
+      "code": "VALIDATION_ERROR",
+      "description": "The target application rejected an input value.",
+      "detect": {
+        "kind": "text_present",
+        "text": "must be at least",
+        "match": "contains"
+      },
+      "terminal": true,
+      "outputs": [
+        {
+          "name": "validationMessage",
+          "type": "string",
+          "description": "The validation message returned by the target application.",
+          "required": true,
+          "sensitivity": "public",
+          "source": {
+            "kind": "text_of",
+            "target": {
+              "role": "generic",
+              "nameMatch": "exact",
+              "framePath": [
+                "content"
+              ],
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "body",
+                  "confidence": 0.4,
+                  "origin": "derived"
+                }
+              ],
+              "description": "Validation message text"
+            },
+            "transform": "trim"
+          }
+        }
+      ]
+    }
+  ],
+  "recoveries": [
+    {
+      "id": "dismiss_interstitial",
+      "description": "Dismiss a system maintenance notice and retry the step.",
+      "when": {
+        "kind": "text_present",
+        "text": "SYSTEM MAINTENANCE NOTICE",
+        "match": "contains"
+      },
+      "do": [
+        {
+          "type": "click",
+          "target": {
+            "role": "button",
+            "name": "Continue",
+            "nameMatch": "exact",
+            "framePath": [
+              "content"
+            ],
+            "strategies": [
+              {
+                "kind": "aria",
+                "role": "button",
+                "name": "Continue",
+                "exact": true,
+                "confidence": 0.95,
+                "origin": "captured"
+              },
+              {
+                "kind": "text",
+                "text": "Continue",
+                "exact": true,
+                "confidence": 0.8,
+                "origin": "derived"
+              }
+            ],
+            "description": "Continue past the maintenance interstitial"
+          }
+        }
+      ],
+      "maxAttempts": 2,
+      "thenRetryStep": true
+    },
+    {
+      "id": "reauthenticate",
+      "description": "Return to the login page, reauthenticate, and retry the step.",
+      "when": {
+        "kind": "text_present",
+        "text": "Your session has expired",
+        "match": "contains"
+      },
+      "do": [
+        {
+          "type": "navigate",
+          "url": "http://127.0.0.1:4599/t/alpha/msc/login"
+        },
+        {
+          "type": "type",
+          "target": {
+            "role": "textbox",
+            "nameMatch": "exact",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "attribute",
+                "attr": "name",
+                "value": "u",
+                "confidence": 0.7,
+                "origin": "captured"
+              }
+            ],
+            "description": "Operator ID login field"
+          },
+          "value": "{{secrets.APP_USER}}",
+          "clearFirst": true
+        },
+        {
+          "type": "type",
+          "target": {
+            "role": "textbox",
+            "nameMatch": "exact",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "attribute",
+                "attr": "name",
+                "value": "p",
+                "confidence": 0.7,
+                "origin": "captured"
+              }
+            ],
+            "description": "Password login field"
+          },
+          "value": "{{secrets.APP_PASSWORD}}",
+          "clearFirst": true
+        },
+        {
+          "type": "click",
+          "target": {
+            "role": "button",
+            "name": "Sign On",
+            "nameMatch": "exact",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "aria",
+                "role": "button",
+                "name": "Sign On",
+                "exact": true,
+                "confidence": 0.95,
+                "origin": "captured"
+              }
+            ],
+            "description": "Sign in to the operator console"
+          }
+        }
+      ],
+      "maxAttempts": 1,
+      "thenRetryStep": true
+    }
+  ],
+  "successCheckpoint": {
+    "kind": "control_present",
+    "target": {
+      "role": "cell",
+      "name": "1250.75",
+      "nameMatch": "exact",
+      "framePath": [
+        "content"
+      ],
+      "scope": {
+        "withinRowMatching": "90000001",
+        "columnHeader": "Current Balance"
+      },
+      "strategies": [
+        {
+          "kind": "aria",
+          "role": "cell",
+          "name": "1250.75",
+          "exact": true,
+          "confidence": 0.95,
+          "origin": "captured"
+        },
+        {
+          "kind": "table_cell",
+          "rowMatch": "90000001",
+          "columnHeader": "Current Balance",
+          "confidence": 0.85,
+          "origin": "captured"
+        },
+        {
+          "kind": "nth_of_role",
+          "role": "cell",
+          "index": 12,
+          "confidence": 0.55,
+          "origin": "derived"
+        },
+        {
+          "kind": "css",
+          "selector": "table:nth-of-type(3) > tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(4)",
+          "confidence": 0.4,
+          "origin": "derived"
+        }
+      ],
+      "description": "cell 1250.75"
+    },
+    "description": "the declared outputs are present and extractable"
+  },
+  "policy": {
+    "allowedOrigins": [
+      "http://127.0.0.1:4599"
+    ],
+    "allowedPathPatterns": [
+      "/**"
+    ],
+    "allowedActions": [
+      "navigate",
+      "click",
+      "type",
+      "select",
+      "press",
+      "wait",
+      "extract",
+      "assert"
+    ],
+    "maxRisk": "safe",
+    "requireApprovalFor": [
+      "irreversible"
+    ],
+    "maxSteps": 60,
+    "timeoutMs": 120000
+  },
+  "provenance": {
+    "recordedAt": "2026-08-19T08:13:23.485Z",
+    "goal": "Sign in as the operator, look up member 10001, and read their Savings account balance",
+    "model": "claude-opus-5",
+    "discoveryRunId": "discover-4b88b857e737",
+    "surfaceSignature": {
+      "browser": "chromium",
+      "surface": "legacy-web"
+    },
+    "llmStepCount": 11
+  },
+  "stability": {
+    "runs": 3,
+    "successes": 3,
+    "businessOutcomes": 0,
+    "failures": 0,
+    "lastRunAt": "2026-08-19T08:33:02.429Z"
+  },
+  "tenantOverrides": {}
+}

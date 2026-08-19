@@ -141,5 +141,55 @@ export function lintCapability(cap: CapabilityValue): string[] {
     problems.push('successCheckpoint must not be a trivially true url_matches ".*"');
   }
 
+  // A positional frame segment ("frame-1") is an index, not an identity: it depends on
+  // attach order and silently points somewhere else on the next run. Recording produced
+  // these when perception ran while a frameset was still attaching, so refuse them here as
+  // well as fixing the race - an artifact carrying one does not replay reliably.
+  for (const [location, path] of collectFramePaths(cap)) {
+    const positional = path.filter((segment) => /^frame-\d+$/.test(segment));
+    if (positional.length > 0) {
+      problems.push(
+        `${location} uses positional frame path segment(s) ${positional.join(", ")}; frames must be addressed by name`,
+      );
+    }
+  }
+
+  // A success checkpoint that embeds a value derived from an input only passes for the run it
+  // was recorded on. This is the classic over-fitted recording: green once, useless after.
+  for (const input of cap.inputs) {
+    const example = input.example;
+    if (typeof example !== "string" && typeof example !== "number") continue;
+    const literal = String(example);
+    if (literal.length < 3) continue;
+    if (JSON.stringify(cap.successCheckpoint).includes(literal)) {
+      problems.push(
+        `successCheckpoint embeds the literal "${literal}" from input ${input.name}; it must be expressed in terms of {{inputs.${input.name}}} or a value-independent condition`,
+      );
+    }
+  }
+
   return problems;
+}
+
+/** Every framePath in the artifact, with a human-readable location for the problem message. */
+function collectFramePaths(cap: CapabilityValue): Array<[string, string[]]> {
+  const found: Array<[string, string[]]> = [];
+  const walk = (value: unknown, location: string): void => {
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => walk(item, `${location}[${index}]`));
+      return;
+    }
+    if (!value || typeof value !== "object") return;
+    const record = value as Record<string, unknown>;
+    if (Array.isArray(record.framePath) && record.framePath.every((s) => typeof s === "string")) {
+      found.push([location, record.framePath as string[]]);
+    }
+    for (const [key, item] of Object.entries(record)) walk(item, `${location}.${key}`);
+  };
+  walk(cap.steps, "steps");
+  walk(cap.outputs, "outputs");
+  walk(cap.outcomes, "outcomes");
+  walk(cap.recoveries, "recoveries");
+  walk(cap.successCheckpoint, "successCheckpoint");
+  return found;
 }

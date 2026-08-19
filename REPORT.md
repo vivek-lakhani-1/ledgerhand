@@ -130,6 +130,21 @@ destroyed."* Frame handles also go stale. Every navigating action therefore arms
 wait *before* dispatching and re-acquires frames by semantic path; `Promise.all([waitForLoadState,
 click])` is banned repo-wide. Most "flaky replay" on this kind of app is this bug, not drift.
 
+**A positional fallback must never produce business data.** The live discovery run exposed the
+sharpest failure mode in the whole design. The model recorded the savings balance cell with a
+ladder whose every rung was record-specific or positional: an `aria` match on `"1250.75"` (a
+cell's accessible name *is* its value), a `table_cell` row match on the account number
+`90000001`, then `nth_of_role` and a CSS path. Replayed for a member with no Savings account,
+the semantic rungs correctly failed and CSS matched anyway — returning that member's *Checking*
+balance, labelled `savingsBalance`, with `status: "success"`.
+
+A confident wrong number is worse than a crash: nothing downstream can detect it. Extraction
+therefore never *falls back* to a positional strategy — if a target has any semantic strategy,
+positional ones are dropped and extraction fails loudly. A target whose only strategy is
+positional is an author's deliberate choice (an error-message region has no better anchor) and
+still resolves; screen coordinates never do. The distinction is between position as a choice and
+position as a guess. Evidence run `06` is this case failing correctly.
+
 Verified behaviours (each an injectable fault, each a test): happy path; `not_found` →
 business outcome; restricted member → business outcome; validation → business outcome; slow →
 success via waits; interstitial → success via recovery; session expiry → success via
@@ -270,6 +285,17 @@ thin it is thin on purpose: the operator console is one HTML file; storage is JS
    to re-identify one control, recorded as evidence and never auto-committed to the artifact.
 5. **Drift dashboards across tenants.** The per-run signal exists; aggregating "step s4 now
    resolves via `text` on 12 tenants" is what turns it into an early-warning system.
+
+**What the live run changed.** Everything above the artifact was testable without a model, and
+the parts that were not are where the bugs were. One real discovery run found five: functions
+transpiled with preserved names broke every DOM helper under the CLI's transpiler but not the
+test runner's; a frameset's child frames were perceived before their names existed, baking a
+positional `frame-1` into the artifact; the recorder attached checkpoints one step early, so a
+type step asserted a state only reachable after the following click; the model declared the
+happy path as a business outcome, which would have shadowed success permanently; and the
+positional-fallback problem above. The lesson is not that the model behaved badly — it is that
+a recording pipeline needs to *overrule* the model, and the places it must do so are only
+visible against a real one.
 
 **Known weaknesses.** The target app is ours, so it is hostile in the ways we anticipated —
 a real vendor product will be hostile in ways we did not. Postcondition synthesis during

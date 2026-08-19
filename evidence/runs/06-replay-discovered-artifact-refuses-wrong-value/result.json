@@ -1,0 +1,18 @@
+{
+  "status": "failed",
+  "runId": "replay-fbeedb7004bf",
+  "capability": {
+    "id": "cap_sign_in_as_the",
+    "version": "1.0.0"
+  },
+  "error": {
+    "class": "CHECKPOINT_FAILED",
+    "stepId": null,
+    "stepDescription": null,
+    "expected": "required output savingsBalance",
+    "observed": "Required output savingsBalance could not be extracted: source returned no value",
+    "message": "Required output savingsBalance could not be extracted: source returned no value",
+    "recoveryAttempts": []
+  },
+  "evidenceDir": "evidence/runs/replay-fbeedb7004bf"
+}

@@ -1,0 +1,13 @@
+{
+  "status": "business_outcome",
+  "runId": "replay-8a0c6b377670",
+  "capability": {
+    "id": "cap_sign_in_as_the",
+    "version": "1.0.0"
+  },
+  "code": "MEMBER_NOT_FOUND",
+  "message": "No member record was found for the requested identifier.",
+  "outputs": {},
+  "atStepId": "s5",
+  "evidenceDir": "evidence/runs/replay-8a0c6b377670"
+}

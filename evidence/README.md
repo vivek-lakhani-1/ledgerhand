@@ -16,10 +16,14 @@ Directory names are curated labels; the original `runId` is preserved inside eve
 
 | Directory | Demonstrates | Result |
 | --- | --- | --- |
+| `00-discovery-live-llm-run` | the **real** model-driven discovery run | recorded `capabilities/member-savings-balance.discovered.v1.json` |
 | `01-replay-success-alpha` | happy path, typed outputs | `success` — `savingsBalance=1250.75`, `memberName="Ada Exampleton"` |
 | `02-replay-business-outcome-member-not-found` | an **expected business outcome**, not a crash | `business_outcome` — `MEMBER_NOT_FOUND` (CLI exits 0) |
 | `03-replay-failure-surface-error` | a **hard failure** with a debuggable report | `failed` — `SURFACE_ERROR` at step `s3` (CLI exits 1) |
 | `04-replay-success-tenant-beta` | **cross-tenant reuse**: the same base artifact plus `tenantOverrides.beta` | `success` — same balance as alpha |
+| `05-replay-discovered-artifact-success` | the **discovered** artifact replaying deterministically | `success` — `savingsBalance=1250.75` |
+| `06-replay-discovered-artifact-refuses-wrong-value` | refusing to guess rather than returning a wrong number | `failed` — output could not be extracted |
+| `07-replay-discovered-artifact-not-found` | the discovered artifact's declared outcome firing | `business_outcome` — `MEMBER_NOT_FOUND` |
 
 Runs 02 and 03 are the contrast the design is built around. Both are "the flow did not reach
 the balance", and they are deliberately different kinds of answer:
@@ -63,12 +67,39 @@ member ID was — the raw values are in neither the log nor the artifact.
 
 ## Discovery run
 
-**Not yet captured in this repo** — `ledgerhand discover` is the one step requiring
-`ANTHROPIC_API_KEY`, and no key was configured when these runs were produced. Running it writes
-`evidence/runs/<runId>/` in the same shape as above, plus `discovery/transcript.jsonl`: the
-model's tool calls and our tool results, kept **separate from the artifact** so the capability
-stays a reviewable contract rather than a model log.
+`00-discovery-live-llm-run` is a real `claude-opus-5` run against the live target app — 14 tool
+calls, compiled into `capabilities/member-savings-balance.discovered.v1.json` (`approval: draft`).
 
-The command is step 2 of the demo path in the root `README.md`. Everything downstream of the
-artifact — replay, outcome classification, recovery, escalation, cross-tenant reuse — is covered
-by the runs above and by the test suite, none of which need a model.
+It carries `discovery/transcript.jsonl`: the model's tool calls and our tool results, kept
+**separate from the artifact** so the capability stays a reviewable contract rather than a model
+log. The transcript is redacted like everything else — the operator password appears in it as
+`«redacted:secret»`, never as its value.
+
+The artifact is recorded as `draft` on purpose. Reviewing this one showed why: the model
+declared a plausible-looking output that captured a whole page of text, and its own success
+criterion asserted the specific balance it happened to see. The recorder overruled the second
+(see `REPORT.md` §3); the first is exactly the kind of thing a human approves or rejects before
+a capability is promoted out of draft.
+
+## Run 06 — why a failure here is the correct answer
+
+The discovered artifact was recorded against member `10001`, who has a Savings account.
+Member `10002` has Checking and Money Market, and **no Savings account at all**.
+
+Before the extraction rule described in `REPORT.md` §3, this run returned:
+
+```
+SUCCESS  savingsBalance = 842.19      ← actually the *Checking* balance
+```
+
+The semantic strategy (`table_cell` matching the recorded account number) correctly failed,
+and resolution then fell through to a positional CSS strategy which matched a different row
+and returned its balance with full confidence. It now returns:
+
+```
+FAILED  Required output savingsBalance could not be extracted: source returned no value
+```
+
+For a system reading financial data, a confident wrong number is the worst possible outcome —
+worse than a crash, because nothing downstream can detect it. Extraction therefore never falls
+back to a positional strategy once a semantic one has failed.

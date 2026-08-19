@@ -43,6 +43,16 @@ export class BrowserSession {
   static async launch(options: BrowserSessionLaunchOptions): Promise<BrowserSession> {
     const browser = await chromium.launch({ headless: options.headless });
     const context = await browser.newContext({ viewport: options.viewport });
+    // Transpilers that preserve function names (esbuild's keepNames, which tsx enables) emit
+    // `__name(fn, "fn")` wrappers. When such a function is serialized into page.evaluate the
+    // browser has no `__name` and every DOM helper throws ReferenceError. Tests run under a
+    // transform that does not do this, so the failure appears only on the CLI path - define
+    // the helper in the page instead of contorting the perception code around it.
+    // Passed as a string: a function argument here would itself be wrapped.
+    await context.addInitScript({
+      content: "globalThis.__name = globalThis.__name || function (fn) { return fn; };",
+    });
+
     const page = await context.newPage();
     const session = new BrowserSession(browser, context, page, options.sessionId);
     session.trackDocumentResponses();

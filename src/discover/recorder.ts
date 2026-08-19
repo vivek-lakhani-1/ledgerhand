@@ -117,8 +117,58 @@ export function recordCapability(options: RecorderOptions): CapabilityValue {
     throw new RecorderValidationError(["finish.successCriterion is not currently true in the final observation"]);
   }
 
-  const outcomes = [...collectDeclaredOutcomes(options.trace), ...defaultOutcomes(outputSpecs)]
-    .filter((outcome, index, all) => all.findIndex((candidate) => candidate.code === outcome.code) === index);
+  // A model asked to name the business outcomes it saw will happily declare the happy path as
+  // one ("MEMBER_RECORD_RETRIEVED"). Replay checks outcomes before success, so such an outcome
+  // permanently shadows success: the capability can never return a typed result. Any declared
+  // outcome that is already true in the final, successful observation is therefore not a
+  // business outcome, and is dropped with a recorded reason rather than trusted.
+  const declaredOutcomes = collectDeclaredOutcomes(options.trace);
+  const shadowsSuccess = declaredOutcomes.filter((outcome) => checkpointHolds(outcome.detect, lastObservation));
+  for (const outcome of shadowsSuccess) {
+    substitutions.push(
+      `dropped declared outcome ${outcome.code}: its detection condition is already true in the successful end state, so it would shadow success`,
+    );
+    options.logger?.emit("recorder.outcome_dropped", { code: outcome.code, reason: "shadows_success" });
+  }
+
+  const outcomes = [
+    ...declaredOutcomes.filter((outcome) => !shadowsSuccess.includes(outcome)),
+    ...defaultOutcomes(outputSpecs),
+  ].filter((outcome, index, all) => all.findIndex((candidate) => candidate.code === outcome.code) === index);
+  // The step that lands on the page holding the data should assert that the page's STRUCTURE
+  // is there, not the values it happens to show. A model naturally asserts what it can see
+  // ("Ada Exampleton"), which over-fits the artifact to the record it was recorded against and
+  // fails for every other member. Assert the extraction target instead - reaching the cell is
+  // the real precondition for extracting from it, and it is member-independent.
+  const dataTarget = outputSpecs.find((output) => output.source.target)?.source.target;
+  const lastStateChanging = [...steps].reverse().find((step) => step.postcondition && step.action.type !== "type" && step.action.type !== "select");
+  if (dataTarget && lastStateChanging && lastStateChanging.postcondition?.kind === "text_present") {
+    substitutions.push(
+      `replaced step ${lastStateChanging.id} postcondition text_present "${lastStateChanging.postcondition.text}" with control_present on the extraction target; asserting extracted data over-fits the artifact to the record it was recorded on`,
+    );
+    lastStateChanging.postcondition = CheckpointSchema.parse({
+      kind: "control_present",
+      target: dataTarget,
+      description: "the page holding the extracted data has loaded",
+    });
+  }
+
+  // Same reasoning for the success condition. A model asked "how would you know this worked?"
+  // answers with what it can see - here the literal row "90000001 | Savings | Open | 1250.75",
+  // which is true for exactly one member and one balance. For a capability that returns data,
+  // success means reaching the state that holds the declared outputs, so assert that instead.
+  let successCheckpoint = finishCheckpoint;
+  if (dataTarget && successCheckpoint.kind === "text_present") {
+    substitutions.push(
+      `replaced successCheckpoint text_present "${successCheckpoint.text}" with control_present on the extraction target; the model's criterion asserted record-specific data and would only hold for the run it was recorded on`,
+    );
+    successCheckpoint = CheckpointSchema.parse({
+      kind: "control_present",
+      target: dataTarget,
+      description: "the declared outputs are present and extractable",
+    });
+  }
+
   const stepsHighestRisk = highestStepRisk(steps);
   const policyConfig = options.policy?.config;
   const origin = new URL(options.entryUrl).origin;
@@ -144,7 +194,7 @@ export function recordCapability(options: RecorderOptions): CapabilityValue {
     steps,
     outcomes,
     recoveries: defaultRecoveries(options.entryUrl),
-    successCheckpoint: finishCheckpoint,
+    successCheckpoint,
     policy: {
       allowedOrigins: policyConfig?.allowedOrigins?.length ? policyConfig.allowedOrigins : [origin],
       allowedPathPatterns: policyConfig?.allowedPathPatterns ?? ["/**"],
@@ -346,7 +396,17 @@ function compileStep(entry: DiscoveryTraceEntry, index: number, entries: readonl
   const action = compileAction(entry, inputMap, suppliedInputs, substitutions, options);
   const risk = classifyRisk(action, entry.descriptor?.name);
   const stateChanging = stateChangingTools.has(entry.tool);
-  const checkpoint = stateChanging ? entry.checkpointAsserted ?? checkpointAfter(entry, entries) ?? synthesizePostcondition(entry) : undefined;
+  // Typing does not change page text, so any text_present checkpoint observed around a type
+  // action necessarily describes a LATER state - the one reached after the subsequent submit.
+  // Inheriting it here shifts every checkpoint back one step and the artifact fails on the
+  // very page it was recorded against. A type step asserts only that its field is still
+  // there to have been typed into; the navigation assertion belongs to the click that causes
+  // the navigation.
+  const checkpoint = !stateChanging
+    ? undefined
+    : action.type === "type" || action.type === "select"
+      ? fieldPresentCheckpoint(action)
+      : entry.checkpointAsserted ?? checkpointAfter(entry, entries) ?? synthesizePostcondition(entry);
   if (stateChanging && !checkpoint) throw new RecorderValidationError(["step " + index + " has no postcondition"]);
   return {
     id: "s" + (index + 1),
@@ -377,6 +437,18 @@ function compileAction(entry: DiscoveryTraceEntry, inputMap: Map<string, ParamSp
   if (entry.tool === "press_key") return { type: "press", key: stringArg(entry.args, "key"), ...(entry.descriptor ? { target: entry.descriptor } : {}) };
   if (entry.tool === "extract") return { type: "extract", outputs: [stringArg(entry.args, "outputName")] };
   throw new RecorderValidationError(["unsupported trace tool " + entry.tool]);
+}
+
+/**
+ * Postcondition for a field-filling step: the field it targeted is present. Weak by design -
+ * the strong assertion belongs to the action that actually changes state.
+ */
+function fieldPresentCheckpoint(action: { type: string; target?: unknown }): Checkpoint {
+  return CheckpointSchema.parse({
+    kind: "control_present",
+    target: action.target,
+    description: "the field that was filled is present",
+  });
 }
 
 function checkpointAfter(entry: DiscoveryTraceEntry, entries: readonly DiscoveryTraceEntry[]): Checkpoint | undefined {

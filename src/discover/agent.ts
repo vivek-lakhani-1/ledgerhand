@@ -179,7 +179,8 @@ export async function runDiscovery(options: DiscoveryOptions): Promise<Discovery
         role: "assistant",
         content: response.content as unknown as MessageParam["content"],
       });
-      const toolCall = response.content.find((block): block is ToolUseBlock => block.type === "tool_use");
+      const toolCalls = response.content.filter((block): block is ToolUseBlock => block.type === "tool_use");
+      const toolCall = toolCalls[0];
       if (!toolCall) {
         const reason = "The model returned no discovery tool call";
         options.logger.emit("escalation.raised", { origin: "discovery", reason });
@@ -224,14 +225,32 @@ export async function runDiscovery(options: DiscoveryOptions): Promise<Discovery
         is_error: !toolResult.result.ok,
         result: modelResult,
       }));
+      // The API requires a tool_result for EVERY tool_use in the preceding assistant message.
+      // A model may emit several in one turn; we deliberately execute only the first, because
+      // the later calls were chosen against an observation that the first action has already
+      // invalidated - acting on them would be driving the UI blind. The rest are answered with
+      // an explicit error telling the model to re-observe, which keeps the protocol valid
+      // without pretending the actions happened.
       messages.push({
         role: "user",
-        content: [{
-          type: "tool_result",
-          tool_use_id: toolCall.id,
-          content: JSON.stringify(modelResult),
-          ...(toolResult.result.ok ? {} : { is_error: true }),
-        }],
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: toolCall.id,
+            content: JSON.stringify(modelResult),
+            ...(toolResult.result.ok ? {} : { is_error: true }),
+          },
+          ...toolCalls.slice(1).map((skipped) => ({
+            type: "tool_result" as const,
+            tool_use_id: skipped.id,
+            content: JSON.stringify({
+              ok: false,
+              error:
+                "Not executed. Actions are applied one at a time because each one can change the page. Call observe and decide again.",
+            }),
+            is_error: true,
+          })),
+        ] as unknown as MessageParam["content"],
       });
 
       if (toolResult.stop) {

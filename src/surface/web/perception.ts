@@ -25,6 +25,27 @@ export function frameSegment(parent: Frame, child: Frame): string {
   return child.name() || `frame-${Math.max(index, 0)}`;
 }
 
+/**
+ * A frameset's child frames attach before their `name` is readable, so perception run too
+ * early sees unnamed frames and falls back to a positional `frame-N` segment. That index is
+ * not a stable identity: it was getting captured into artifacts, which then failed to replay
+ * even against the page they were recorded on. Wait for the names to appear instead.
+ *
+ * Best-effort: a frame that genuinely has no name (rare in the legacy apps this targets, and
+ * still addressable positionally) must not hang the run, so this returns after the timeout.
+ */
+export async function waitForNamedFrames(page: Page, timeoutMs = 2000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const unnamed = page
+      .mainFrame()
+      .childFrames()
+      .filter((child) => child.name() === "");
+    if (unnamed.length === 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+}
+
 export function enumerateFrames(page: Page): FrameInfo[] {
   const frames: FrameInfo[] = [];
   const visit = (frame: Frame, path: string[]): void => {
@@ -46,6 +67,10 @@ function samePath(left: string[], right: string[]): boolean {
 }
 
 export async function perceive(page: Page, options: { includeScreenshot?: boolean } = {}): Promise<Observation> {
+  // Never perceive a frameset mid-attach: an unnamed child yields a positional frame path
+  // that is not a stable identity and must not reach a descriptor or a checkpoint.
+  await waitForNamedFrames(page);
+
   const frames: Observation["frames"] = [];
   let nextRef = 1;
 

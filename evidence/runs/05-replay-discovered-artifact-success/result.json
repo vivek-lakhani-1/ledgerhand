@@ -1,0 +1,15 @@
+{
+  "status": "success",
+  "runId": "replay-272ecb49ae0c",
+  "capability": {
+    "id": "cap_sign_in_as_the",
+    "version": "1.0.0"
+  },
+  "outputs": {
+    "savingsBalance": 1250.75,
+    "validationMessage": "MERIDIAN CREDIT UNION - Member Services Console\n\nMember Details\n\n\nMember ID:\t1***1\nName:\tAda Exampleton\nBranch:\tHarbor Demo Branch\nStatus:\tActive\n\nAccounts\n\n\nAccount No.\tType\tStatus\tCurrent Balance\n90000001\tSavings\tOpen\t1250.75"
+  },
+  "stepsExecuted": 6,
+  "durationMs": 32084,
+  "evidenceDir": "evidence/runs/replay-272ecb49ae0c"
+}

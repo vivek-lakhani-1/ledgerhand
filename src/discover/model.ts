@@ -132,6 +132,10 @@ export class AnthropicModelClient implements ModelClient {
       system: req.system,
       messages: req.messages,
       tools: req.tools,
+      // Driving a UI is inherently sequential: every action can change the page, so a second
+      // call decided from the same observation is already stale. Ask for one at a time.
+      // The loop still handles parallel calls defensively if they arrive.
+      tool_choice: { type: "auto", disable_parallel_tool_use: true },
     });
 
     if (response.stop_reason === "refusal") {
