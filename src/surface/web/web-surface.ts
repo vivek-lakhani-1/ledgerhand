@@ -265,8 +265,7 @@ export class WebSurface implements Surface {
 
     const strategy = action.target.strategies[resolved.strategyIndex];
     if (strategy.kind === "coordinate") {
-      // Last-resort targeting still has to settle: a coordinate click can navigate the frame
-      // just like a resolved one, and skipping the settle leaves the next read racing it.
+      // Still has to settle - a coordinate click navigates like any other.
       const settle = settleAfterAction(frame, { timeoutMs });
       await this.session.page.mouse.click(strategy.x, strategy.y);
       await settle;

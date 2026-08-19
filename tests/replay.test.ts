@@ -38,7 +38,7 @@ beforeEach(async () => {
   await resetInjection();
 });
 
-describe("Phase 4 deterministic replay against the live target app", () => {
+describe("deterministic replay against the live target app", () => {
   it("1. happy path returns typed success outputs", async () => {
     const run = await runCapability(balanceCapability());
 

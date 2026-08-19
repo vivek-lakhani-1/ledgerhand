@@ -37,7 +37,7 @@ afterAll(async () => {
   await new Promise<void>((resolve, reject) => targetServer.close((error) => error ? reject(error) : resolve()));
 });
 
-describe("Phase 6 live control transfer and resume", () => {
+describe("live control transfer and resume", () => {
   it("1. raises a populated intervention with evidence paths and context", async () => {
     const harness = await makeHarness({ earlyApproval: true });
     try {

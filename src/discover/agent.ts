@@ -225,12 +225,8 @@ export async function runDiscovery(options: DiscoveryOptions): Promise<Discovery
         is_error: !toolResult.result.ok,
         result: modelResult,
       }));
-      // The API requires a tool_result for EVERY tool_use in the preceding assistant message.
-      // A model may emit several in one turn; we deliberately execute only the first, because
-      // the later calls were chosen against an observation that the first action has already
-      // invalidated - acting on them would be driving the UI blind. The rest are answered with
-      // an explicit error telling the model to re-observe, which keeps the protocol valid
-      // without pretending the actions happened.
+      // Every tool_use needs a tool_result or the API rejects the next request. We run the
+      // first and refuse the rest - they were chosen against a page the first one just changed.
       messages.push({
         role: "user",
         content: [

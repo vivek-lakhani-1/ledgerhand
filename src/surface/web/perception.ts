@@ -25,15 +25,9 @@ export function frameSegment(parent: Frame, child: Frame): string {
   return child.name() || `frame-${Math.max(index, 0)}`;
 }
 
-/**
- * A frameset's child frames attach before their `name` is readable, so perception run too
- * early sees unnamed frames and falls back to a positional `frame-N` segment. That index is
- * not a stable identity: it was getting captured into artifacts, which then failed to replay
- * even against the page they were recorded on. Wait for the names to appear instead.
- *
- * Best-effort: a frame that genuinely has no name (rare in the legacy apps this targets, and
- * still addressable positionally) must not hang the run, so this returns after the timeout.
- */
+// Frameset children attach before their name is readable. Perceive too early and you get a
+// positional frame-N, which then gets baked into an artifact. Best effort - don't hang if a
+// frame really has no name.
 export async function waitForNamedFrames(page: Page, timeoutMs = 2000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {

@@ -30,7 +30,7 @@ export const Capability = z
 
     inputs: z.array(ParamSpec).default([]),
     outputs: z.array(OutputSpec).default([]),
-    // Required by Phase 2 linting for recovery templates such as {{secrets.APP_USER}}.
+    // Recovery templates reference these, e.g. {{secrets.APP_USER}}.
     secretsRequired: z.array(z.string()).default([]),
     steps: z.array(Step).min(1),
     outcomes: z.array(BusinessOutcome).default([]),

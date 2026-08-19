@@ -43,12 +43,8 @@ export class BrowserSession {
   static async launch(options: BrowserSessionLaunchOptions): Promise<BrowserSession> {
     const browser = await chromium.launch({ headless: options.headless });
     const context = await browser.newContext({ viewport: options.viewport });
-    // Transpilers that preserve function names (esbuild's keepNames, which tsx enables) emit
-    // `__name(fn, "fn")` wrappers. When such a function is serialized into page.evaluate the
-    // browser has no `__name` and every DOM helper throws ReferenceError. Tests run under a
-    // transform that does not do this, so the failure appears only on the CLI path - define
-    // the helper in the page instead of contorting the perception code around it.
-    // Passed as a string: a function argument here would itself be wrapped.
+    // esbuild keepNames emits __name(fn) wrappers; serialize one into page.evaluate and the
+    // browser throws ReferenceError. String form, because a function arg gets wrapped too.
     await context.addInitScript({
       content: "globalThis.__name = globalThis.__name || function (fn) { return fn; };",
     });
@@ -95,14 +91,8 @@ export class BrowserSession {
     this.page.on("framenavigated", this.navigationListener);
   }
 
-  /**
-   * Records the HTTP status of the most recent *document* response in any frame.
-   *
-   * Classifying an application error by scraping the error page's body text only works
-   * against an app whose error page you already know. The transport-level status is the
-   * generic signal, so replay can report SURFACE_ERROR for any 5xx without recognising the
-   * vendor's particular error copy.
-   */
+  // Last document response status. Scraping error-page text only works if you already know
+  // the app; the status doesn't care whose error page it is.
   trackDocumentResponses(): void {
     if (this.responseListener) return;
     this.responseListener = (response) => {

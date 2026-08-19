@@ -40,7 +40,7 @@ afterAll(async () => {
   await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
 });
 
-describe("Phase 5 discovery loop", () => {
+describe("discovery loop", () => {
   it("runs a scripted happy path against the live target and captures descriptors at action time", async () => {
     const run = await runScript([
       call("observe", {}),

@@ -50,7 +50,7 @@ afterEach(async () => {
   await session.close();
 });
 
-describe("Phase 3 surface abstraction against the live legacy app", () => {
+describe("surface abstraction against the live legacy app", () => {
   it("recurses the frameset and perceives controls in the content frame", async () => {
     const observation = await surface.observe();
     const content = observation.frames.find((frame) => frame.path.join("/") === "content");

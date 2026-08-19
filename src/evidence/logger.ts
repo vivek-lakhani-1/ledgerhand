@@ -17,9 +17,7 @@ export const EventType = [
   "human.resolved",
   "drift.proposed",
   "drift.summary",
-  // Emitted while compiling a trace into an artifact, when the recorder overrules something
-  // the model asserted. These are the audit trail for "the model discovered, the system
-  // validated" - without them a silently-corrected recording looks like a clean one.
+  // Recorder overruled something the model asserted.
   "recorder.outcome_dropped",
   "step.end",
   "run.end",

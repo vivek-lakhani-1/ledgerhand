@@ -342,7 +342,7 @@ function secretValues(): string[] {
 
 /**
  * In a separate CLI process, a legacy frameset can finish its document swap after the
- * perception callback has inspected the frame. Preserve the Phase 3 observation and fill only
+ * perception callback has inspected the frame. Preserve the observation and fill only
  * an empty frame text from the same live frame body before replay evaluates text checkpoints.
  */
 function withCliTextFallback(surface: WebSurface, session: BrowserSession): WebSurface {

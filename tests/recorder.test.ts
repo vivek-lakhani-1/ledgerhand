@@ -10,7 +10,7 @@ import type { Observation, PerceivedControl } from "../src/surface/types.js";
 const ORIGIN = "http://127.0.0.1:4641";
 const ENTRY_URL = ORIGIN + "/t/alpha/msc/login";
 
-describe("Phase 5 recorder", () => {
+describe("recorder", () => {
   it("compiles a canned trace into a validated capability with parameterization, postconditions, defaults, and risk", () => {
     const trace = cannedTrace();
     const substitutions: string[] = [];

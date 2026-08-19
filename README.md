@@ -1,6 +1,15 @@
 # Ledgerhand
 
-Ledgerhand lets a model discover a browser workflow once and compile it into a typed capability artifact. Later runs use that artifact for deterministic replay, typed inputs and outputs, business-outcome classification, and human escalation when automation cannot safely continue. The target app is a local stand-in for a legacy bank console, intentionally shaped like a hostile frameset-based system rather than a production banking service. Phase 7 adds a catalog and CLI so an agent can discover, describe, and invoke approved capabilities by name.
+A model drives a legacy UI once to figure out how a task is done. That run gets compiled into a
+typed capability artifact, which is then replayed with no model in the loop: typed inputs and
+outputs, declared business outcomes kept separate from failures, and a handoff to a human when
+replay can't safely continue.
+
+The target app is a local stand-in for a legacy bank console. It's built to be awkward on
+purpose - framesets, table layout, no test ids - rather than to look like a real banking
+service. A catalog and CLI expose saved capabilities so an agent could call them by name.
+
+Design notes are in [REPORT.md](REPORT.md). Saved runs are in [evidence/](evidence/).
 
 ## Setup
 
@@ -47,7 +56,10 @@ Run each numbered command from the repository root. Leave command 1 running in i
    ledgerhand discover --goal "Look up a member savings balance" --url http://127.0.0.1:4599/t/alpha/msc/login --input memberId=10001
    ```
 
-   Expected: the model drives the stand-in and the recorder writes a new draft JSON file under `capabilities/`.
+   Expected: the model works through the app and the recorder writes a new draft artifact under
+   `capabilities/`. One such run is already committed as
+   `capabilities/member-savings-balance.discovered.v1.json`, with its transcript in
+   `evidence/runs/00-discovery-live-llm-run/`.
 
 3. Replay the approved balance artifact:
 
@@ -107,8 +119,17 @@ npm test
 npm run typecheck
 ```
 
-The tests start the local target app on dedicated ports for replay, catalog invocation, tenant reuse, surface resolution, and escalation. Discovery tests use a scripted model client and do not require a live model or API key. Catalog shape, invalid-file reporting, tenant merge/linting, and drift evidence are also covered without any external service. A live browser is still required for the replay and operator-flow tests; no remote service is used.
+The suite starts the target app on its own ports and drives a real browser, but nothing leaves
+the machine. Discovery is tested through a scripted model client, so the agent loop, the
+recorder, replay, catalog, tenant merging, drift evidence and the operator handoff are all
+covered with no API key.
+
+`discover` is the only command that needs a key.
 
 ## What is mocked
 
-The target app is a local stand-in for a legacy bank console. The operator console's live view is a screenshot poll with coordinate input forwarding, not a real co-browsing stack; control transfer, the shared live BrowserSession, human actions, and checkpoint-based resume are real. See [REPORT.md](REPORT.md), section 7, for the full cut list.
+The operator console's live view is a screenshot poll with coordinate input forwarding, not a
+real co-browsing stack. What's underneath it is real: one shared BrowserSession, explicit
+control transfer, policy-checked and recorded human actions, and checkpoint-based resume.
+
+The target app is a stand-in, not a real system. Full cut list is in REPORT.md section 7.
