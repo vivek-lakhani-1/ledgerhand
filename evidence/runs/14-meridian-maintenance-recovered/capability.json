@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.0.0",
-  "id": "cap_meridian_member_lookup",
-  "name": "meridian.member.lookup",
-  "title": "Find a member by last name",
+  "id": "cap_meridian_member_balance",
+  "name": "meridian.member.balance",
+  "title": "Read a member's shares and balances",
   "version": "1.0.0",
-  "description": "Signs on to Meridian Core, searches Member Inquiry by last name, and reports the first matching member's number and name.",
+  "description": "Signs on to Meridian Core, opens the member record by member number, and reads the member's name, e-mail, and primary share balance and status.",
   "approval": "approved",
   "target": {
     "surface": "legacy-web",
@@ -19,53 +19,52 @@
   },
   "inputs": [
     {
-      "name": "lastName",
+      "name": "memberNumber",
       "type": "string",
       "required": true,
-      "description": "The member last name to search for.",
+      "description": "The six-digit member number to look up.",
+      "pattern": "^[0-9]{6}$",
       "sensitivity": "pii",
-      "example": "Lovelace"
+      "example": "100234"
     }
   ],
   "outputs": [
     {
-      "name": "matchedMemberNumber",
+      "name": "memberName",
       "type": "string",
-      "description": "Member number of the first matching member.",
+      "description": "The member's name as shown on the member record.",
       "required": true,
       "sensitivity": "pii",
       "source": {
         "kind": "text_of",
         "target": {
           "role": "cell",
+          "nameMatch": "exact",
           "framePath": [],
-          "scope": {
-            "nth": 0
-          },
           "strategies": [
             {
-              "kind": "table_cell",
-              "rowMatch": "Select",
-              "columnHeader": "Member No.",
-              "confidence": 0.85,
+              "kind": "css",
+              "selector": "td:text-is(\"Name:\") + td",
+              "confidence": 0.9,
               "origin": "derived"
             }
           ],
-          "description": "Member No. cell of the first result row"
+          "description": "Value cell to the right of the Name: label"
         },
         "transform": "trim"
       }
     },
     {
-      "name": "matchedMemberName",
+      "name": "primaryShareId",
       "type": "string",
-      "description": "Name of the first matching member.",
+      "description": "Share ID of the first share listed on the member record.",
       "required": true,
-      "sensitivity": "pii",
+      "sensitivity": "public",
       "source": {
         "kind": "text_of",
         "target": {
           "role": "cell",
+          "nameMatch": "exact",
           "framePath": [],
           "scope": {
             "nth": 0
@@ -73,13 +72,71 @@
           "strategies": [
             {
               "kind": "table_cell",
-              "rowMatch": "Select",
-              "columnHeader": "Name",
+              "rowMatch": "$",
+              "columnHeader": "Share ID",
               "confidence": 0.85,
               "origin": "derived"
             }
           ],
-          "description": "Name cell of the first result row"
+          "description": "Share ID cell of the first share row"
+        },
+        "transform": "trim"
+      }
+    },
+    {
+      "name": "primaryShareBalance",
+      "type": "currency",
+      "description": "Balance of the first share listed on the member record.",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "nameMatch": "exact",
+          "framePath": [],
+          "scope": {
+            "nth": 0
+          },
+          "strategies": [
+            {
+              "kind": "table_cell",
+              "rowMatch": "$",
+              "columnHeader": "Balance",
+              "confidence": 0.85,
+              "origin": "derived"
+            }
+          ],
+          "description": "Balance cell of the first share row"
+        },
+        "transform": "currency_to_number"
+      }
+    },
+    {
+      "name": "primaryShareStatus",
+      "type": "string",
+      "description": "Status of the first share listed on the member record, such as OPEN or HOLD.",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "nameMatch": "exact",
+          "framePath": [],
+          "scope": {
+            "nth": 0
+          },
+          "strategies": [
+            {
+              "kind": "table_cell",
+              "rowMatch": "$",
+              "columnHeader": "Status",
+              "confidence": 0.85,
+              "origin": "derived"
+            }
+          ],
+          "description": "Status cell of the first share row"
         },
         "transform": "trim"
       }
@@ -97,6 +154,7 @@
         "type": "type",
         "target": {
           "role": "textbox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -112,51 +170,65 @@
         "value": "{{secrets.MERIDIAN_OPERATOR}}",
         "clearFirst": true
       },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "control_present",
         "target": {
           "role": "textbox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
               "kind": "attribute",
               "attr": "name",
-              "value": "password",
+              "value": "«redacted:secret»",
               "confidence": 0.98,
               "origin": "captured"
             }
           ],
-          "description": "Operator password field"
+          "description": "Operator «redacted:secret» field"
         }
-      }
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
       "id": "s2",
-      "description": "Enter the operator password",
+      "description": "Enter the operator «redacted:secret»",
       "action": {
         "type": "type",
         "target": {
           "role": "textbox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
               "kind": "attribute",
               "attr": "name",
-              "value": "password",
+              "value": "«redacted:secret»",
               "confidence": 0.98,
               "origin": "captured"
             }
           ],
-          "description": "Operator password field"
+          "description": "Operator «redacted:secret» field"
         },
         "value": "{{secrets.MERIDIAN_PASSWORD}}",
         "clearFirst": true
       },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "control_present",
         "target": {
           "role": "button",
           "name": "Sign On",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -170,7 +242,14 @@
           ],
           "description": "Sign On button"
         }
-      }
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
       "id": "s3",
@@ -180,6 +259,7 @@
         "target": {
           "role": "button",
           "name": "Sign On",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -194,55 +274,76 @@
           "description": "Sign On button"
         }
       },
-      "retries": {
-        "max": 1,
-        "backoffMs": 500
-      },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "text_present",
         "text": "MAIN MENU",
         "match": "contains",
         "framePath": []
-      }
-    },
-    {
-      "id": "s4",
-      "description": "Search the member directory by last name",
-      "action": {
-        "type": "navigate",
-        "url": "https://web-sample.interface-hiring.com/members?by=name&q={{inputs.lastName}}"
       },
+      "timeoutMs": 15000,
       "retries": {
         "max": 1,
         "backoffMs": 500
       },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s4",
+      "description": "Open the member record",
+      "action": {
+        "type": "navigate",
+        "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}?inject=maintenance"
+      },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "text_present",
-        "text": "MEMBER INQUIRY",
+        "text": "MEMBER RECORD",
         "match": "contains",
         "framePath": [],
         "timeoutMs": 8000
-      }
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 1,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
       "id": "s5",
-      "description": "Read the first matching member",
+      "description": "Read the member's shares and balances",
       "action": {
         "type": "extract",
         "outputs": [
-          "matchedMemberNumber",
-          "matchedMemberName"
+          "memberName",
+          "primaryShareId",
+          "primaryShareBalance",
+          "primaryShareStatus"
         ]
-      }
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     }
   ],
   "outcomes": [
     {
-      "code": "NO_MATCH",
-      "description": "No member records matched the search.",
+      "code": "MEMBER_NOT_FOUND",
+      "description": "No member record exists for the requested member number.",
       "detect": {
         "kind": "text_present",
-        "text": "No member records matched your search.",
+        "text": "RECORD NOT FOUND",
         "match": "contains",
         "framePath": []
       },
@@ -253,7 +354,7 @@
   "recoveries": [
     {
       "id": "dismiss_maintenance",
-      "description": "Dismiss the maintenance interstitial and return to the interrupted screen.",
+      "description": "Dismiss the maintenance interstitial and return to the member record.",
       "when": {
         "kind": "text_present",
         "text": "SCHEDULED MAINTENANCE IN PROGRESS",
@@ -266,6 +367,7 @@
           "target": {
             "role": "link",
             "name": "Continue",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
@@ -277,12 +379,12 @@
                 "origin": "captured"
               }
             ],
-            "description": "Continue link"
+            "description": "Continue past the maintenance notice"
           }
         },
         {
           "type": "navigate",
-          "url": "https://web-sample.interface-hiring.com/members?by=name&q={{inputs.lastName}}"
+          "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}"
         }
       ],
       "maxAttempts": 3,
@@ -290,7 +392,7 @@
     },
     {
       "id": "reauthenticate",
-      "description": "Sign back on after an idle session timeout and return to the interrupted screen.",
+      "description": "Sign back on after an idle session timeout and return to the member record.",
       "when": {
         "kind": "text_present",
         "text": "YOUR SESSION HAS TIMED OUT",
@@ -306,6 +408,7 @@
           "type": "type",
           "target": {
             "role": "textbox",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
@@ -325,17 +428,18 @@
           "type": "type",
           "target": {
             "role": "textbox",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
                 "kind": "attribute",
                 "attr": "name",
-                "value": "password",
+                "value": "«redacted:secret»",
                 "confidence": 0.98,
                 "origin": "captured"
               }
             ],
-            "description": "Operator password field"
+            "description": "Operator «redacted:secret» field"
           },
           "value": "{{secrets.MERIDIAN_PASSWORD}}",
           "clearFirst": true
@@ -345,6 +449,7 @@
           "target": {
             "role": "button",
             "name": "Sign On",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
@@ -361,7 +466,7 @@
         },
         {
           "type": "navigate",
-          "url": "https://web-sample.interface-hiring.com/members?by=name&q={{inputs.lastName}}"
+          "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}"
         }
       ],
       "maxAttempts": 1,
@@ -370,7 +475,7 @@
   ],
   "successCheckpoint": {
     "kind": "text_present",
-    "text": "Member No.",
+    "text": "SHARES / BALANCES",
     "match": "contains",
     "framePath": []
   },
@@ -395,26 +500,87 @@
     "requireApprovalFor": [
       "irreversible"
     ],
-    "maxSteps": 15,
+    "maxSteps": 20,
     "timeoutMs": 120000
   },
   "provenance": {
-    "recordedAt": "2026-08-27T18:00:00.000Z",
-    "goal": "Search the member directory: sign on to Meridian Core, open Member Inquiry, search for members by last name, and report the matching member's number and name",
-    "model": "claude-opus-5-then-hand-curated",
-    "discoveryRunId": "discover-c5eb360111b7",
+    "recordedAt": "2026-08-27T17:05:20.000Z",
+    "goal": "Sign on to Meridian Core as the operator, look up the member by member number, open the member record, and read the member's name and the balance of their Regular Shares (S0001) share",
+    "model": "claude-opus-5",
+    "discoveryRunId": "discover-26fe8cc8e560",
     "surfaceSignature": {
       "browser": "chromium",
       "surface": "legacy-web"
     },
-    "llmStepCount": 0
+    "llmStepCount": 16
   },
   "stability": {
-    "runs": 1,
+    "runs": 2,
     "successes": 1,
-    "businessOutcomes": 0,
+    "businessOutcomes": 1,
     "failures": 0,
-    "lastRunAt": "2026-08-27T17:55:50.454Z"
+    "lastRunAt": "2026-08-27T17:21:21.688Z"
   },
-  "tenantOverrides": {}
+  "tenantOverrides": {
+    "demo-maintenance": {
+      "steps": {
+        "s4": {
+          "action": {
+            "type": "navigate",
+            "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}?inject=maintenance"
+          },
+          "risk": "safe",
+          "preconditions": [],
+          "timeoutMs": 15000,
+          "retries": {
+            "max": 0,
+            "backoffMs": 500
+          },
+          "recover": [],
+          "onFailure": "fail"
+        }
+      },
+      "note": "Demo variant: the member-record navigation forces a 503 maintenance interstitial so the dismiss_maintenance recovery can be shown deterministically."
+    },
+    "demo-timeout": {
+      "steps": {
+        "s4": {
+          "action": {
+            "type": "navigate",
+            "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}?inject=timeout"
+          },
+          "risk": "safe",
+          "preconditions": [],
+          "timeoutMs": 15000,
+          "retries": {
+            "max": 0,
+            "backoffMs": 500
+          },
+          "recover": [],
+          "onFailure": "fail"
+        }
+      },
+      "note": "Demo variant: the member-record navigation forces a 440 session timeout so the reauthenticate recovery can be shown deterministically."
+    },
+    "demo-server-error": {
+      "steps": {
+        "s4": {
+          "action": {
+            "type": "navigate",
+            "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}?inject=server"
+          },
+          "risk": "safe",
+          "preconditions": [],
+          "timeoutMs": 15000,
+          "retries": {
+            "max": 0,
+            "backoffMs": 500
+          },
+          "recover": [],
+          "onFailure": "fail"
+        }
+      },
+      "note": "Demo variant: the member-record navigation forces a hard 500 application error, which is a hard failure rather than a recoverable condition."
+    }
+  }
 }

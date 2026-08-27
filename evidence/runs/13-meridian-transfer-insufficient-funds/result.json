@@ -1,0 +1,13 @@
+{
+  "status": "business_outcome",
+  "runId": "replay-93707f9907a7",
+  "capability": {
+    "id": "cap_meridian_funds_transfer",
+    "version": "1.0.0"
+  },
+  "code": "INSUFFICIENT_FUNDS",
+  "message": "The source share does not hold enough to cover the transfer.",
+  "outputs": {},
+  "atStepId": "s9",
+  "evidenceDir": "evidence/runs/replay-93707f9907a7"
+}

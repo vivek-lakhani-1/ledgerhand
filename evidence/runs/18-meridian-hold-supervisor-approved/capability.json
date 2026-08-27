@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.0.0",
-  "id": "cap_meridian_share_open",
-  "name": "meridian.share.open",
-  "title": "Open a new share for a member",
+  "id": "cap_meridian_account_hold",
+  "name": "meridian.account.hold",
+  "title": "Place a hold on a member share",
   "version": "1.0.0",
-  "description": "Signs on to Meridian Core, fills the member's Open New Share form, walks the review step, and opens the share.",
+  "description": "Signs on to Meridian Core as the hold operator, fills the restricted Place Account Hold form, walks the review step, and applies the hold. Requires a supervisor profile; a non-supervisor attempt stops and escalates.",
   "approval": "approved",
   "target": {
     "surface": "legacy-web",
@@ -22,46 +22,53 @@
       "name": "memberNumber",
       "type": "string",
       "required": true,
-      "description": "The six-digit member number to open the share for.",
+      "description": "The six-digit member number whose share is being held.",
       "pattern": "^[0-9]{6}$",
       "sensitivity": "pii",
       "example": "100234"
     },
     {
-      "name": "shareType",
-      "type": "enum",
-      "required": true,
-      "description": "The share type to open.",
-      "enumValues": [
-        "S0001",
-        "S0070",
-        "MMKT",
-        "CERT"
-      ],
-      "sensitivity": "public",
-      "example": "MMKT"
-    },
-    {
-      "name": "deposit",
+      "name": "shareId",
       "type": "string",
       "required": true,
-      "description": "Initial deposit in dollars; the host requires at least 5.00.",
-      "pattern": "^[0-9]+(\\.[0-9]{1,2})?$",
+      "description": "Share ID to place on hold, for example 100234-S0001.",
       "sensitivity": "public",
-      "example": "25.00"
+      "example": "100234-S0001"
+    },
+    {
+      "name": "reasonCode",
+      "type": "enum",
+      "required": true,
+      "description": "Reason code for the hold.",
+      "enumValues": [
+        "FRAUD",
+        "LEGAL",
+        "DECEASED"
+      ],
+      "sensitivity": "public",
+      "example": "FRAUD"
+    },
+    {
+      "name": "notes",
+      "type": "string",
+      "required": true,
+      "description": "Notes recorded with the hold. May be empty.",
+      "sensitivity": "public",
+      "example": "Verification review"
     }
   ],
   "outputs": [
     {
       "name": "confirmationNumber",
       "type": "string",
-      "description": "Confirmation number of the opened share.",
+      "description": "Confirmation number of the applied hold.",
       "required": true,
       "sensitivity": "public",
       "source": {
         "kind": "text_of",
         "target": {
           "role": "cell",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -75,35 +82,11 @@
         },
         "transform": "trim"
       }
-    },
-    {
-      "name": "newShareId",
-      "type": "string",
-      "description": "Share ID assigned to the new share.",
-      "required": true,
-      "sensitivity": "public",
-      "source": {
-        "kind": "text_of",
-        "target": {
-          "role": "cell",
-          "framePath": [],
-          "strategies": [
-            {
-              "kind": "css",
-              "selector": "td:text-is(\"New Share ID:\") + td",
-              "confidence": 0.9,
-              "origin": "derived"
-            }
-          ],
-          "description": "Value cell to the right of the New Share ID: label"
-        },
-        "transform": "trim"
-      }
     }
   ],
   "secretsRequired": [
-    "MERIDIAN_OPERATOR",
-    "MERIDIAN_PASSWORD"
+    "MERIDIAN_HOLD_OPERATOR",
+    "MERIDIAN_HOLD_PASSWORD"
   ],
   "steps": [
     {
@@ -113,6 +96,7 @@
         "type": "type",
         "target": {
           "role": "textbox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -125,54 +109,68 @@
           ],
           "description": "Operator ID field"
         },
-        "value": "{{secrets.MERIDIAN_OPERATOR}}",
+        "value": "{{secrets.MERIDIAN_HOLD_OPERATOR}}",
         "clearFirst": true
       },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "control_present",
         "target": {
           "role": "textbox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
               "kind": "attribute",
               "attr": "name",
-              "value": "password",
+              "value": "«redacted:secret»",
               "confidence": 0.98,
               "origin": "captured"
             }
           ],
-          "description": "Operator password field"
+          "description": "Operator «redacted:secret» field"
         }
-      }
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
       "id": "s2",
-      "description": "Enter the operator password",
+      "description": "Enter the operator «redacted:secret»",
       "action": {
         "type": "type",
         "target": {
           "role": "textbox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
               "kind": "attribute",
               "attr": "name",
-              "value": "password",
+              "value": "«redacted:secret»",
               "confidence": 0.98,
               "origin": "captured"
             }
           ],
-          "description": "Operator password field"
+          "description": "Operator «redacted:secret» field"
         },
-        "value": "{{secrets.MERIDIAN_PASSWORD}}",
+        "value": "{{secrets.MERIDIAN_HOLD_PASSWORD}}",
         "clearFirst": true
       },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "control_present",
         "target": {
           "role": "button",
           "name": "Sign On",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -186,7 +184,14 @@
           ],
           "description": "Sign On button"
         }
-      }
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
       "id": "s3",
@@ -196,6 +201,7 @@
         "target": {
           "role": "button",
           "name": "Sign On",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -210,89 +216,152 @@
           "description": "Sign On button"
         }
       },
-      "retries": {
-        "max": 1,
-        "backoffMs": 500
-      },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "text_present",
         "text": "MAIN MENU",
         "match": "contains",
         "framePath": []
-      }
-    },
-    {
-      "id": "s4",
-      "description": "Open the member's Open New Share form",
-      "action": {
-        "type": "navigate",
-        "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/open-share"
       },
+      "timeoutMs": 15000,
       "retries": {
         "max": 1,
         "backoffMs": 500
       },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s4",
+      "description": "Open the member's Place Account Hold form",
+      "action": {
+        "type": "navigate",
+        "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/hold"
+      },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "text_present",
-        "text": "OPEN NEW SHARE",
+        "text": "PLACE ACCOUNT HOLD",
         "match": "contains",
         "framePath": [],
         "timeoutMs": 8000
-      }
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 1,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
       "id": "s5",
-      "description": "Choose the share type",
+      "description": "Choose the share to hold",
       "action": {
         "type": "select",
         "target": {
           "role": "combobox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
               "kind": "attribute",
               "attr": "name",
-              "value": "type",
+              "value": "share",
               "confidence": 0.98,
               "origin": "captured"
             }
           ],
-          "description": "Share Type list"
+          "description": "Share list"
         },
-        "value": "{{inputs.shareType}}"
-      }
+        "value": "{{inputs.shareId}}"
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
       "id": "s6",
-      "description": "Enter the initial deposit",
+      "description": "Choose the hold reason code",
+      "action": {
+        "type": "select",
+        "target": {
+          "role": "combobox",
+          "nameMatch": "exact",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "reason",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Reason Code list"
+        },
+        "value": "{{inputs.reasonCode}}"
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s7",
+      "description": "Enter the hold notes",
       "action": {
         "type": "type",
         "target": {
           "role": "textbox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
               "kind": "attribute",
               "attr": "name",
-              "value": "deposit",
+              "value": "notes",
               "confidence": 0.98,
               "origin": "captured"
             }
           ],
-          "description": "Initial Deposit field"
+          "description": "Notes field"
         },
-        "value": "{{inputs.deposit}}",
+        "value": "{{inputs.notes}}",
         "clearFirst": true
-      }
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
-      "id": "s7",
-      "description": "Continue to the share review screen",
+      "id": "s8",
+      "description": "Continue to the hold review screen",
       "action": {
         "type": "click",
         "target": {
           "role": "button",
           "name": "Continue",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -307,91 +376,76 @@
           "description": "Continue button"
         }
       },
-      "retries": {
-        "max": 1,
-        "backoffMs": 500
-      },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "text_present",
-        "text": "CONFIRM NEW SHARE",
+        "text": "CONFIRM ACCOUNT HOLD",
         "match": "contains",
         "framePath": [],
         "timeoutMs": 8000
-      }
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "escalate"
     },
     {
-      "id": "s8",
-      "description": "Open the reviewed share",
+      "id": "s9",
+      "description": "Apply the reviewed hold",
       "action": {
         "type": "click",
         "target": {
           "role": "button",
-          "name": "Open Share",
+          "name": "Apply Hold",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
               "kind": "aria",
               "role": "button",
-              "name": "Open Share",
+              "name": "Apply Hold",
               "exact": true,
               "confidence": 0.99,
               "origin": "captured"
             }
           ],
-          "description": "Open Share button"
+          "description": "Apply Hold button"
         }
       },
       "risk": "irreversible",
-      "onFailure": "escalate",
+      "preconditions": [],
       "postcondition": {
         "kind": "text_present",
-        "text": "NEW SHARE ESTABLISHED",
+        "text": "HOLD RECORDED",
         "match": "contains",
         "framePath": [],
         "timeoutMs": 8000
-      }
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "escalate"
     }
   ],
   "outcomes": [
     {
-      "code": "VALIDATION_REJECTED",
-      "description": "The application rejected the share request as entered.",
+      "code": "MEMBER_NOT_FOUND",
+      "description": "No member record exists for the requested member number.",
       "detect": {
         "kind": "text_present",
-        "text": "could not be validated",
+        "text": "RECORD NOT FOUND",
         "match": "contains",
         "framePath": []
       },
       "terminal": true,
-      "outputs": [
-        {
-          "name": "validationMessage",
-          "type": "string",
-          "description": "The application's validation message.",
-          "required": false,
-          "sensitivity": "public",
-          "source": {
-            "kind": "text_of",
-            "target": {
-              "role": "text",
-              "framePath": [],
-              "scope": {
-                "nth": 0
-              },
-              "strategies": [
-                {
-                  "kind": "css",
-                  "selector": "li",
-                  "confidence": 0.7,
-                  "origin": "derived"
-                }
-              ],
-              "description": "First validation message item"
-            },
-            "transform": "trim"
-          }
-        }
-      ]
+      "outputs": []
     },
     {
       "code": "TRANSACTION_REJECTED",
@@ -404,24 +458,12 @@
       },
       "terminal": true,
       "outputs": []
-    },
-    {
-      "code": "MEMBER_NOT_FOUND",
-      "description": "No member record exists for the requested member number.",
-      "detect": {
-        "kind": "text_present",
-        "text": "RECORD NOT FOUND",
-        "match": "contains",
-        "framePath": []
-      },
-      "terminal": true,
-      "outputs": []
     }
   ],
   "recoveries": [
     {
       "id": "dismiss_maintenance",
-      "description": "Dismiss the maintenance interstitial and return to the interrupted screen.",
+      "description": "Dismiss the maintenance interstitial and retry the interrupted step.",
       "when": {
         "kind": "text_present",
         "text": "SCHEDULED MAINTENANCE IN PROGRESS",
@@ -434,6 +476,7 @@
           "target": {
             "role": "link",
             "name": "Continue",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
@@ -447,10 +490,6 @@
             ],
             "description": "Continue link"
           }
-        },
-        {
-          "type": "navigate",
-          "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/open-share"
         }
       ],
       "maxAttempts": 3,
@@ -474,6 +513,7 @@
           "type": "type",
           "target": {
             "role": "textbox",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
@@ -486,26 +526,27 @@
             ],
             "description": "Operator ID field"
           },
-          "value": "{{secrets.MERIDIAN_OPERATOR}}",
+          "value": "{{secrets.MERIDIAN_HOLD_OPERATOR}}",
           "clearFirst": true
         },
         {
           "type": "type",
           "target": {
             "role": "textbox",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
                 "kind": "attribute",
                 "attr": "name",
-                "value": "password",
+                "value": "«redacted:secret»",
                 "confidence": 0.98,
                 "origin": "captured"
               }
             ],
-            "description": "Operator password field"
+            "description": "Operator «redacted:secret» field"
           },
-          "value": "{{secrets.MERIDIAN_PASSWORD}}",
+          "value": "{{secrets.MERIDIAN_HOLD_PASSWORD}}",
           "clearFirst": true
         },
         {
@@ -513,6 +554,7 @@
           "target": {
             "role": "button",
             "name": "Sign On",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
@@ -529,7 +571,7 @@
         },
         {
           "type": "navigate",
-          "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/open-share"
+          "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/hold"
         }
       ],
       "maxAttempts": 1,
@@ -538,7 +580,7 @@
   ],
   "successCheckpoint": {
     "kind": "text_present",
-    "text": "NEW SHARE ESTABLISHED",
+    "text": "HOLD RECORDED",
     "match": "contains",
     "framePath": []
   },
@@ -560,15 +602,17 @@
       "assert"
     ],
     "maxRisk": "irreversible",
-    "requireApprovalFor": [],
+    "requireApprovalFor": [
+      "irreversible"
+    ],
     "maxSteps": 25,
     "timeoutMs": 120000
   },
   "provenance": {
     "recordedAt": "2026-08-27T18:00:00.000Z",
-    "goal": "Prepare a new share opening in Meridian Core: sign on, open the member's Open New Share form, choose the share type, enter the initial deposit, and continue to the confirmation review screen. Stop at the review screen; do not post.",
-    "model": "claude-opus-5-then-hand-curated",
-    "discoveryRunId": "discover-f5658d8d61f8",
+    "goal": "Prepare an account hold in Meridian Core: sign on as the supervisor, open the member's Place Account Hold form, choose the share and reason code, enter notes, and continue to the confirmation review screen. Stop at the review screen; do not post the hold.",
+    "model": "claude-opus-5",
+    "discoveryRunId": "PENDING",
     "surfaceSignature": {
       "browser": "chromium",
       "surface": "legacy-web"
@@ -576,11 +620,11 @@
     "llmStepCount": 0
   },
   "stability": {
-    "runs": 1,
+    "runs": 2,
     "successes": 0,
-    "businessOutcomes": 1,
-    "failures": 0,
-    "lastRunAt": "2026-08-27T17:56:22.212Z"
+    "businessOutcomes": 0,
+    "failures": 2,
+    "lastRunAt": "2026-08-27T17:18:51.371Z"
   },
   "tenantOverrides": {}
 }

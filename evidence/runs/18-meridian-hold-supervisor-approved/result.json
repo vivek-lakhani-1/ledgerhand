@@ -1,0 +1,14 @@
+{
+  "status": "success",
+  "runId": "replay-52a787f222b8",
+  "capability": {
+    "id": "cap_meridian_account_hold",
+    "version": "1.0.0"
+  },
+  "outputs": {
+    "confirmationNumber": "CN480041"
+  },
+  "stepsExecuted": 9,
+  "durationMs": 40641,
+  "evidenceDir": "evidence/runs/replay-52a787f222b8"
+}

@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.0.0",
-  "id": "cap_meridian_share_open",
-  "name": "meridian.share.open",
-  "title": "Open a new share for a member",
+  "id": "cap_meridian_funds_transfer",
+  "name": "meridian.funds.transfer",
+  "title": "Transfer funds between a member's shares",
   "version": "1.0.0",
-  "description": "Signs on to Meridian Core, fills the member's Open New Share form, walks the review step, and opens the share.",
+  "description": "Signs on to Meridian Core, fills the member's Funds Transfer form, walks the review step, and posts the transfer. Posting is irreversible.",
   "approval": "approved",
   "target": {
     "surface": "legacy-web",
@@ -22,46 +22,57 @@
       "name": "memberNumber",
       "type": "string",
       "required": true,
-      "description": "The six-digit member number to open the share for.",
+      "description": "The six-digit member number whose shares are involved.",
       "pattern": "^[0-9]{6}$",
       "sensitivity": "pii",
       "example": "100234"
     },
     {
-      "name": "shareType",
-      "type": "enum",
-      "required": true,
-      "description": "The share type to open.",
-      "enumValues": [
-        "S0001",
-        "S0070",
-        "MMKT",
-        "CERT"
-      ],
-      "sensitivity": "public",
-      "example": "MMKT"
-    },
-    {
-      "name": "deposit",
+      "name": "fromShareId",
       "type": "string",
       "required": true,
-      "description": "Initial deposit in dollars; the host requires at least 5.00.",
+      "description": "Share ID to draw funds from, for example 100234-S0001.",
+      "sensitivity": "public",
+      "example": "100234-S0001"
+    },
+    {
+      "name": "toShareId",
+      "type": "string",
+      "required": true,
+      "description": "Share ID to deposit funds into.",
+      "sensitivity": "public",
+      "example": "100234-S0070"
+    },
+    {
+      "name": "amount",
+      "type": "string",
+      "required": true,
+      "description": "Dollar amount to transfer, for example 25.00.",
       "pattern": "^[0-9]+(\\.[0-9]{1,2})?$",
       "sensitivity": "public",
       "example": "25.00"
+    },
+    {
+      "name": "memo",
+      "type": "string",
+      "required": true,
+      "description": "Short memo recorded with the transfer. May be empty.",
+      "sensitivity": "public",
+      "example": "Phone request"
     }
   ],
   "outputs": [
     {
       "name": "confirmationNumber",
       "type": "string",
-      "description": "Confirmation number of the opened share.",
+      "description": "Confirmation number of the posted transfer.",
       "required": true,
       "sensitivity": "public",
       "source": {
         "kind": "text_of",
         "target": {
           "role": "cell",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -77,25 +88,26 @@
       }
     },
     {
-      "name": "newShareId",
+      "name": "postedAt",
       "type": "string",
-      "description": "Share ID assigned to the new share.",
+      "description": "Timestamp the transfer posted.",
       "required": true,
       "sensitivity": "public",
       "source": {
         "kind": "text_of",
         "target": {
           "role": "cell",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
               "kind": "css",
-              "selector": "td:text-is(\"New Share ID:\") + td",
+              "selector": "td:text-is(\"Posted:\") + td",
               "confidence": 0.9,
               "origin": "derived"
             }
           ],
-          "description": "Value cell to the right of the New Share ID: label"
+          "description": "Value cell to the right of the Posted: label"
         },
         "transform": "trim"
       }
@@ -113,6 +125,7 @@
         "type": "type",
         "target": {
           "role": "textbox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -128,51 +141,65 @@
         "value": "{{secrets.MERIDIAN_OPERATOR}}",
         "clearFirst": true
       },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "control_present",
         "target": {
           "role": "textbox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
               "kind": "attribute",
               "attr": "name",
-              "value": "password",
+              "value": "«redacted:secret»",
               "confidence": 0.98,
               "origin": "captured"
             }
           ],
-          "description": "Operator password field"
+          "description": "Operator «redacted:secret» field"
         }
-      }
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
       "id": "s2",
-      "description": "Enter the operator password",
+      "description": "Enter the operator «redacted:secret»",
       "action": {
         "type": "type",
         "target": {
           "role": "textbox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
               "kind": "attribute",
               "attr": "name",
-              "value": "password",
+              "value": "«redacted:secret»",
               "confidence": 0.98,
               "origin": "captured"
             }
           ],
-          "description": "Operator password field"
+          "description": "Operator «redacted:secret» field"
         },
         "value": "{{secrets.MERIDIAN_PASSWORD}}",
         "clearFirst": true
       },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "control_present",
         "target": {
           "role": "button",
           "name": "Sign On",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -186,7 +213,14 @@
           ],
           "description": "Sign On button"
         }
-      }
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
       "id": "s3",
@@ -196,6 +230,7 @@
         "target": {
           "role": "button",
           "name": "Sign On",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -210,89 +245,185 @@
           "description": "Sign On button"
         }
       },
-      "retries": {
-        "max": 1,
-        "backoffMs": 500
-      },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "text_present",
         "text": "MAIN MENU",
         "match": "contains",
         "framePath": []
-      }
-    },
-    {
-      "id": "s4",
-      "description": "Open the member's Open New Share form",
-      "action": {
-        "type": "navigate",
-        "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/open-share"
       },
+      "timeoutMs": 15000,
       "retries": {
         "max": 1,
         "backoffMs": 500
       },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s4",
+      "description": "Open the member's Funds Transfer form",
+      "action": {
+        "type": "navigate",
+        "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/transfer"
+      },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "text_present",
-        "text": "OPEN NEW SHARE",
+        "text": "FUNDS TRANSFER",
         "match": "contains",
         "framePath": [],
         "timeoutMs": 8000
-      }
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 1,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
       "id": "s5",
-      "description": "Choose the share type",
+      "description": "Choose the share to draw from",
       "action": {
         "type": "select",
         "target": {
           "role": "combobox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
               "kind": "attribute",
               "attr": "name",
-              "value": "type",
+              "value": "from",
               "confidence": 0.98,
               "origin": "captured"
             }
           ],
-          "description": "Share Type list"
+          "description": "From Share list"
         },
-        "value": "{{inputs.shareType}}"
-      }
+        "value": "{{inputs.fromShareId}}"
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
       "id": "s6",
-      "description": "Enter the initial deposit",
+      "description": "Choose the share to deposit into",
+      "action": {
+        "type": "select",
+        "target": {
+          "role": "combobox",
+          "nameMatch": "exact",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "to",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "To Share list"
+        },
+        "value": "{{inputs.toShareId}}"
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s7",
+      "description": "Enter the transfer amount",
       "action": {
         "type": "type",
         "target": {
           "role": "textbox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
               "kind": "attribute",
               "attr": "name",
-              "value": "deposit",
+              "value": "amount",
               "confidence": 0.98,
               "origin": "captured"
             }
           ],
-          "description": "Initial Deposit field"
+          "description": "Amount field"
         },
-        "value": "{{inputs.deposit}}",
+        "value": "{{inputs.amount}}",
         "clearFirst": true
-      }
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
-      "id": "s7",
-      "description": "Continue to the share review screen",
+      "id": "s8",
+      "description": "Enter the transfer memo",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "nameMatch": "exact",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "memo",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Memo field"
+        },
+        "value": "{{inputs.memo}}",
+        "clearFirst": true
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s9",
+      "description": "Continue to the transfer review screen",
       "action": {
         "type": "click",
         "target": {
           "role": "button",
           "name": "Continue",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -307,55 +438,80 @@
           "description": "Continue button"
         }
       },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "text_present",
+        "text": "CONFIRM FUNDS TRANSFER",
+        "match": "contains",
+        "framePath": [],
+        "timeoutMs": 8000
+      },
+      "timeoutMs": 15000,
       "retries": {
         "max": 1,
         "backoffMs": 500
       },
-      "postcondition": {
-        "kind": "text_present",
-        "text": "CONFIRM NEW SHARE",
-        "match": "contains",
-        "framePath": [],
-        "timeoutMs": 8000
-      }
+      "recover": [],
+      "onFailure": "fail"
     },
     {
-      "id": "s8",
-      "description": "Open the reviewed share",
+      "id": "s10",
+      "description": "Post the reviewed transfer",
       "action": {
         "type": "click",
         "target": {
           "role": "button",
-          "name": "Open Share",
+          "name": "Post Transfer",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
               "kind": "aria",
               "role": "button",
-              "name": "Open Share",
+              "name": "Post Transfer",
               "exact": true,
               "confidence": 0.99,
               "origin": "captured"
             }
           ],
-          "description": "Open Share button"
+          "description": "Post Transfer button"
         }
       },
       "risk": "irreversible",
-      "onFailure": "escalate",
+      "preconditions": [],
       "postcondition": {
         "kind": "text_present",
-        "text": "NEW SHARE ESTABLISHED",
+        "text": "TRANSACTION COMPLETE",
         "match": "contains",
         "framePath": [],
         "timeoutMs": 8000
-      }
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "escalate"
     }
   ],
   "outcomes": [
     {
+      "code": "INSUFFICIENT_FUNDS",
+      "description": "The source share does not hold enough to cover the transfer.",
+      "detect": {
+        "kind": "text_present",
+        "text": "Insufficient available balance",
+        "match": "contains",
+        "framePath": []
+      },
+      "terminal": true,
+      "outputs": []
+    },
+    {
       "code": "VALIDATION_REJECTED",
-      "description": "The application rejected the share request as entered.",
+      "description": "The application rejected the transfer as entered.",
       "detect": {
         "kind": "text_present",
         "text": "could not be validated",
@@ -374,6 +530,7 @@
             "kind": "text_of",
             "target": {
               "role": "text",
+              "nameMatch": "exact",
               "framePath": [],
               "scope": {
                 "nth": 0
@@ -434,6 +591,7 @@
           "target": {
             "role": "link",
             "name": "Continue",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
@@ -450,7 +608,7 @@
         },
         {
           "type": "navigate",
-          "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/open-share"
+          "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/transfer"
         }
       ],
       "maxAttempts": 3,
@@ -474,6 +632,7 @@
           "type": "type",
           "target": {
             "role": "textbox",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
@@ -493,17 +652,18 @@
           "type": "type",
           "target": {
             "role": "textbox",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
                 "kind": "attribute",
                 "attr": "name",
-                "value": "password",
+                "value": "«redacted:secret»",
                 "confidence": 0.98,
                 "origin": "captured"
               }
             ],
-            "description": "Operator password field"
+            "description": "Operator «redacted:secret» field"
           },
           "value": "{{secrets.MERIDIAN_PASSWORD}}",
           "clearFirst": true
@@ -513,6 +673,7 @@
           "target": {
             "role": "button",
             "name": "Sign On",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
@@ -529,7 +690,7 @@
         },
         {
           "type": "navigate",
-          "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/open-share"
+          "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/transfer"
         }
       ],
       "maxAttempts": 1,
@@ -538,7 +699,7 @@
   ],
   "successCheckpoint": {
     "kind": "text_present",
-    "text": "NEW SHARE ESTABLISHED",
+    "text": "TRANSACTION COMPLETE",
     "match": "contains",
     "framePath": []
   },
@@ -566,9 +727,9 @@
   },
   "provenance": {
     "recordedAt": "2026-08-27T18:00:00.000Z",
-    "goal": "Prepare a new share opening in Meridian Core: sign on, open the member's Open New Share form, choose the share type, enter the initial deposit, and continue to the confirmation review screen. Stop at the review screen; do not post.",
-    "model": "claude-opus-5-then-hand-curated",
-    "discoveryRunId": "discover-f5658d8d61f8",
+    "goal": "Prepare a funds transfer in Meridian Core: sign on, open the member's Funds Transfer form, choose the from share and to share, enter the amount and memo, and continue to the confirmation review screen. Stop at the review screen; do not post the transfer.",
+    "model": "claude-opus-5",
+    "discoveryRunId": "PENDING",
     "surfaceSignature": {
       "browser": "chromium",
       "surface": "legacy-web"
@@ -576,11 +737,11 @@
     "llmStepCount": 0
   },
   "stability": {
-    "runs": 1,
+    "runs": 0,
     "successes": 0,
-    "businessOutcomes": 1,
+    "businessOutcomes": 0,
     "failures": 0,
-    "lastRunAt": "2026-08-27T17:56:22.212Z"
+    "lastRunAt": null
   },
   "tenantOverrides": {}
 }

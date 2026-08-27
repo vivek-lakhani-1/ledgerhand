@@ -1,0 +1,12 @@
+{
+  "status": "escalated",
+  "runId": "replay-9291da2aa84e",
+  "capability": {
+    "id": "cap_meridian_account_hold",
+    "version": "1.0.0"
+  },
+  "interventionId": "<local>",
+  "reason": "UNRECOVERABLE",
+  "atStepId": "s8",
+  "evidenceDir": "evidence/runs/replay-9291da2aa84e"
+}

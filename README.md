@@ -36,6 +36,9 @@ ledgerhand() { npx --no-install tsx src/cli/index.ts "$@"; }
 | `CONSOLE_PORT` | No | Default run-console port, `4620`. |
 | `APP_USER` | No | Local stand-in operator ID, default `OPER01`. |
 | `APP_PASSWORD` | No | Local stand-in password, default `demo-pass-01`. |
+| `MERIDIAN_OPERATOR` / `MERIDIAN_PASSWORD` | For Meridian replays | Meridian Core teller sign-on, `teller1` / `password` (public demo credentials). |
+| `MERIDIAN_HOLD_OPERATOR` / `MERIDIAN_HOLD_PASSWORD` | For the hold capability | Operator profile the hold capability signs on as; `super1` completes, `teller1` demonstrates the escalation. |
+| `CHAT_MODEL` | No | Model behind the console's Chat tab, default `claude-sonnet-5`. |
 
 Replay, catalog, invoke, the target app, the run console, and the operator console run without
 `ANTHROPIC_API_KEY`. The console's Discover tab disables itself, with the reason shown, when the key
@@ -73,7 +76,114 @@ on an escalation.
 Everything below still works from the CLI, and the CLI remains the scriptable path with meaningful
 exit codes.
 
-## Exact demo path
+The **Chat** tab is a thin conversational front door over the capability API: type a request in
+plain language, the model picks a capability from the catalog and invokes it, and each invocation
+appears as a chip that jumps to its live run. It uses the same guardrailed invoke path as every
+other caller, so it cannot reach anything the API would refuse.
+
+## MERIDIAN CORE: the hosted adaptation target
+
+`capabilities/meridian.*.v1.json` point the same core at MERIDIAN CORE, a hosted legacy
+credit-union servicing console at `https://web-sample.interface-hiring.com` — server-rendered
+HTML, table layout, a per-transaction hidden token, and injectable runtime faults. There is no
+local app to start; the capabilities drive the live site. The write-up of what the adaptation
+took is in [ADAPTATION.md](ADAPTATION.md).
+
+The seven functions are covered by seven artifacts:
+
+| Capability | Does | Notable |
+| --- | --- | --- |
+| `meridian.signon` | Sign on, confirm the main menu | `INVALID_CREDENTIALS` outcome |
+| `meridian.member.lookup` | Search members by last name | `NO_MATCH` outcome |
+| `meridian.member.balance` | Read a member's record and primary share balance | `demo-maintenance` / `demo-timeout` / `demo-server-error` tenant variants |
+| `meridian.funds.transfer` | Fill, review and post a transfer | irreversible post step; `INSUFFICIENT_FUNDS` |
+| `meridian.share.open` | Open a new share through review | returns the new share id |
+| `meridian.member.update` | Save new contact details | `VALIDATION_REJECTED` carries the app's message |
+| `meridian.account.hold` | Supervisor-gated hold through review and post | escalates as teller; pauses for approval at post |
+
+### Meridian demo path
+
+Start the console (`ledgerhand console --port 4620`) for the watchable version of everything
+below, or run the commands as they are. Seed members: 100234, 100987, 101555, 102777, 103001.
+
+1. Balance check (happy path):
+
+   ```bash
+   ledgerhand replay capabilities/meridian.member.balance.v1.json --input memberNumber=100987
+   ```
+
+   Expected: `SUCCESS` with `memberName`, `primaryShareId`, `primaryShareBalance`, `primaryShareStatus`; exit `0`.
+
+2. Business outcome — no such member:
+
+   ```bash
+   ledgerhand replay capabilities/meridian.member.balance.v1.json --input memberNumber=999999
+   ```
+
+   Expected: `BUSINESS_OUTCOME MEMBER_NOT_FOUND`, exit `0`.
+
+3. Funds transfer, posted for real against the live console:
+
+   ```bash
+   ledgerhand replay capabilities/meridian.funds.transfer.v1.json \
+     --input memberNumber=100987 --input fromShareId=100987-S0001 \
+     --input toShareId=100987-S0070 --input amount=1.00 --input memo="demo"
+   ```
+
+   Expected: `SUCCESS` with a `CN…` confirmation number. With `amount=999999.00` instead:
+   `BUSINESS_OUTCOME INSUFFICIENT_FUNDS`, exit `0`.
+
+4. Injected faults, deterministically, via the demo tenant variants:
+
+   ```bash
+   ledgerhand replay capabilities/meridian.member.balance.v1.json --tenant demo-maintenance --input memberNumber=100987
+   ledgerhand replay capabilities/meridian.member.balance.v1.json --tenant demo-timeout --input memberNumber=100987
+   ledgerhand replay capabilities/meridian.member.balance.v1.json --tenant demo-server-error --input memberNumber=100987
+   ```
+
+   Expected: the first two recover (dismiss the 503 interstitial; re-sign-on after the 440
+   session kill) and end `SUCCESS`; the third ends `FAILED SURFACE_ERROR` with the observed
+   `HTTP 500`, exit `1`.
+
+5. The supervisor wall, both ways:
+
+   ```bash
+   # As the teller profile: stops at the 403 and escalates. Exit 2.
+   MERIDIAN_HOLD_OPERATOR=teller1 MERIDIAN_HOLD_PASSWORD=password \
+     ledgerhand replay capabilities/meridian.account.hold.v1.json \
+     --input memberNumber=100987 --input shareId=100987-S0070 \
+     --input reasonCode=FRAUD --input notes="demo"
+
+   # As the supervisor, with the operator console for the irreversible approval:
+   ledgerhand replay capabilities/meridian.account.hold.v1.json --operator \
+     --input memberNumber=100987 --input shareId=100987-S0070 \
+     --input reasonCode=FRAUD --input notes="demo"
+   ```
+
+   Expected: the supervisor run pauses at `Apply Hold` and prints an operator URL; approve
+   there and it finishes `SUCCESS` with a confirmation number.
+
+6. The capability API (the console must be running):
+
+   ```bash
+   curl -s http://127.0.0.1:4620/api/catalog | head -40
+   curl -s -X POST http://127.0.0.1:4620/api/catalog/meridian.member.balance/invoke \
+     -H 'content-type: application/json' \
+     -d '{"inputs":{"memberNumber":"100234"}}'
+   ```
+
+   Expected: the invoke call answers with `{ runId, result }` where `result` is the same
+   structured verdict the CLI prints — and the run is watchable on the console while it happens.
+
+7. The chatbot: open the console's **Chat** tab and ask
+   *"What is the balance for member 100234?"* or
+   *"Transfer $5 from 100987-S0001 to 100987-S0070, memo demo"*. Each reply cites the run it
+   invoked; clicking the chip shows that run's timeline, frame, and evidence.
+
+Saved Meridian runs — one per demonstration above, including the discovery recording — are
+committed under `evidence/runs/10-meridian-*` through `18-meridian-*` as the offline backup.
+
+## Exact demo path (local stand-in app)
 
 Run each numbered command from the repository root. Leave command 1 running in its terminal; the remaining commands can run in a second terminal after defining the `ledgerhand` function above.
 
