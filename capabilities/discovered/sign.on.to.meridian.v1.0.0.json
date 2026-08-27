@@ -1,16 +1,16 @@
 {
   "schemaVersion": "1.0.0",
-  "id": "cap_member_savings_balance_discovered",
-  "name": "member.savings_balance.discovered",
-  "title": "Look up a member savings balance (LLM-discovered)",
+  "id": "cap_sign_on_to_meridian",
+  "name": "sign.on.to.meridian",
+  "title": "Sign On To Meridian",
   "version": "1.0.0",
-  "description": "Sign in as the operator, look up member 10001, and read their Savings account balance",
+  "description": "Sign on to Meridian Core as the operator, look up the member by member number, open the member record, and read the member's name and the balance of their Regular Shares (S0001) share",
   "approval": "draft",
   "target": {
     "surface": "legacy-web",
     "app": "meridian-msc",
     "tenant": null,
-    "entryUrl": "http://127.0.0.1:4599/t/alpha/msc/login",
+    "entryUrl": "https://web-sample.interface-hiring.com/signon",
     "viewport": {
       "width": 1280,
       "height": 900
@@ -18,67 +18,117 @@
   },
   "inputs": [
     {
-      "name": "memberId",
+      "name": "memberNumber",
       "type": "string",
       "required": true,
-      "description": "The member identifier to look up in the Member Services Console",
+      "description": "The member number to look up in Member Inquiry",
       "sensitivity": "pii",
-      "example": 10001
+      "example": 100234
     }
   ],
   "outputs": [
     {
-      "name": "savingsBalance",
-      "type": "currency",
-      "description": "Current balance of the member's Savings account",
+      "name": "memberName",
+      "type": "string",
+      "description": "The member's name shown in the Name field of the member record",
       "required": true,
       "sensitivity": "public",
       "source": {
         "kind": "text_of",
         "target": {
           "role": "cell",
-          "name": "1250.75",
+          "name": "Lovelace, Ada",
           "nameMatch": "exact",
-          "framePath": [
-            "content"
-          ],
+          "framePath": [],
           "scope": {
-            "withinRowMatching": "90000001",
-            "columnHeader": "Current Balance"
+            "withinRowMatching": "Member No.:",
+            "columnHeader": "Lovelace, Ada"
           },
           "strategies": [
             {
               "kind": "aria",
               "role": "cell",
-              "name": "1250.75",
+              "name": "Lovelace, Ada",
               "exact": true,
               "confidence": 0.95,
               "origin": "captured"
             },
             {
               "kind": "table_cell",
-              "rowMatch": "90000001",
-              "columnHeader": "Current Balance",
+              "rowMatch": "Member No.:",
+              "columnHeader": "Lovelace, Ada",
               "confidence": 0.85,
               "origin": "captured"
             },
             {
               "kind": "nth_of_role",
               "role": "cell",
-              "index": 12,
+              "index": 6,
               "confidence": 0.55,
               "origin": "derived"
             },
             {
               "kind": "css",
-              "selector": "table:nth-of-type(3) > tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(4)",
+              "selector": "table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(4)",
               "confidence": 0.4,
               "origin": "derived"
             }
           ],
-          "description": "cell 1250.75"
+          "description": "cell Lovelace, Ada"
         },
-        "transform": "currency_to_number"
+        "transform": "trim"
+      }
+    },
+    {
+      "name": "regularSharesS0001Balance",
+      "type": "currency",
+      "description": "Balance of the member's Regular Shares (S0001) share, from the Balance column of the S0001 row",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "name": "$2,499.00",
+          "nameMatch": "exact",
+          "framePath": [],
+          "scope": {
+            "withinRowMatching": "100234-S0001",
+            "columnHeader": "Balance"
+          },
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "cell",
+              "name": "$2,499.00",
+              "exact": true,
+              "confidence": 0.95,
+              "origin": "captured"
+            },
+            {
+              "kind": "table_cell",
+              "rowMatch": "100234-S0001",
+              "columnHeader": "Balance",
+              "confidence": 0.85,
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "cell",
+              "index": 19,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "table:nth-of-type(2) > tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(3)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "cell $2,499.00"
+        },
+        "transform": "trim"
       }
     },
     {
@@ -116,7 +166,7 @@
   "steps": [
     {
       "id": "s1",
-      "description": "Enter the operator ID to sign on.",
+      "description": "Enter the operator ID to sign on",
       "action": {
         "type": "type",
         "target": {
@@ -127,7 +177,7 @@
             {
               "kind": "attribute",
               "attr": "name",
-              "value": "u",
+              "value": "operator",
               "confidence": 0.7,
               "origin": "captured"
             },
@@ -169,7 +219,7 @@
             {
               "kind": "attribute",
               "attr": "name",
-              "value": "u",
+              "value": "operator",
               "confidence": 0.7,
               "origin": "captured"
             },
@@ -208,7 +258,7 @@
     },
     {
       "id": "s2",
-      "description": "Enter the operator password to sign on.",
+      "description": "Enter the operator password to sign on",
       "action": {
         "type": "type",
         "target": {
@@ -219,7 +269,7 @@
             {
               "kind": "attribute",
               "attr": "name",
-              "value": "p",
+              "value": "password",
               "confidence": 0.7,
               "origin": "captured"
             },
@@ -261,7 +311,7 @@
             {
               "kind": "attribute",
               "attr": "name",
-              "value": "p",
+              "value": "password",
               "confidence": 0.7,
               "origin": "captured"
             },
@@ -300,7 +350,7 @@
     },
     {
       "id": "s3",
-      "description": "Submit the sign-on form to authenticate the operator.",
+      "description": "Submit sign-on to reach the main menu",
       "action": {
         "type": "click",
         "target": {
@@ -347,7 +397,7 @@
             },
             {
               "kind": "css",
-              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(3) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(4) > td:nth-of-type(2) > input:nth-of-type(1)",
               "confidence": 0.4,
               "origin": "derived"
             }
@@ -359,11 +409,9 @@
       "preconditions": [],
       "postcondition": {
         "kind": "text_present",
-        "text": "Enter an identifier and retrieve the member record.",
+        "text": "MAIN MENU",
         "match": "contains",
-        "framePath": [
-          "content"
-        ]
+        "framePath": []
       },
       "timeoutMs": 15000,
       "retries": {
@@ -375,91 +423,72 @@
     },
     {
       "id": "s4",
-      "description": "Enter the member ID to look up.",
+      "description": "Open the Member Inquiry / Selection screen to look up a member",
       "action": {
-        "type": "type",
+        "type": "click",
         "target": {
-          "role": "textbox",
+          "role": "link",
+          "name": "Member Inquiry / Selection",
           "nameMatch": "exact",
-          "framePath": [
-            "content"
-          ],
+          "framePath": [],
+          "scope": {
+            "withinRowMatching": "1.",
+            "columnHeader": "Member Inquiry / Selection"
+          },
           "strategies": [
             {
-              "kind": "attribute",
-              "attr": "name",
-              "value": "q",
-              "confidence": 0.7,
+              "kind": "aria",
+              "role": "link",
+              "name": "Member Inquiry / Selection",
+              "exact": true,
+              "confidence": 0.95,
+              "origin": "captured"
+            },
+            {
+              "kind": "table_cell",
+              "rowMatch": "1.",
+              "columnHeader": "Member Inquiry / Selection",
+              "confidence": 0.85,
+              "origin": "captured"
+            },
+            {
+              "kind": "text",
+              "text": "Member Inquiry / Selection",
+              "exact": true,
+              "confidence": 0.8,
               "origin": "captured"
             },
             {
               "kind": "attribute",
-              "attr": "type",
-              "value": "text",
+              "attr": "href",
+              "value": "/members",
               "confidence": 0.6499999999999999,
               "origin": "captured"
             },
             {
               "kind": "nth_of_role",
-              "role": "textbox",
-              "index": 0,
+              "role": "link",
+              "index": 4,
               "confidence": 0.55,
               "origin": "derived"
             },
             {
               "kind": "css",
-              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(2) > a:nth-of-type(1)",
               "confidence": 0.4,
               "origin": "derived"
             }
           ],
-          "description": "textbox near Member ID:"
-        },
-        "value": "{{inputs.memberId}}",
-        "clearFirst": true
+          "description": "link Member Inquiry / Selection"
+        }
       },
       "risk": "safe",
       "preconditions": [],
       "postcondition": {
-        "kind": "control_present",
-        "target": {
-          "role": "textbox",
-          "nameMatch": "exact",
-          "framePath": [
-            "content"
-          ],
-          "strategies": [
-            {
-              "kind": "attribute",
-              "attr": "name",
-              "value": "q",
-              "confidence": 0.7,
-              "origin": "captured"
-            },
-            {
-              "kind": "attribute",
-              "attr": "type",
-              "value": "text",
-              "confidence": 0.6499999999999999,
-              "origin": "captured"
-            },
-            {
-              "kind": "nth_of_role",
-              "role": "textbox",
-              "index": 0,
-              "confidence": 0.55,
-              "origin": "derived"
-            },
-            {
-              "kind": "css",
-              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(2) > input:nth-of-type(1)",
-              "confidence": 0.4,
-              "origin": "derived"
-            }
-          ],
-          "description": "textbox near Member ID:"
-        },
-        "description": "the field that was filled is present"
+        "kind": "text_present",
+        "text": "MEMBER INQUIRY / SELECTION",
+        "match": "contains",
+        "framePath": []
       },
       "timeoutMs": 15000,
       "retries": {
@@ -471,49 +500,42 @@
     },
     {
       "id": "s5",
-      "description": "Retrieve the member record for the entered member ID.",
+      "description": "Focus the Value textbox before typing the member number",
       "action": {
         "type": "click",
         "target": {
-          "role": "button",
-          "name": "Retrieve",
+          "role": "textbox",
           "nameMatch": "exact",
-          "framePath": [
-            "content"
-          ],
+          "framePath": [],
+          "scope": {
+            "withinRowMatching": "Value:",
+            "columnHeader": "Member Number Last Name"
+          },
           "strategies": [
             {
-              "kind": "aria",
-              "role": "button",
-              "name": "Retrieve",
-              "exact": true,
-              "confidence": 0.95,
-              "origin": "captured"
-            },
-            {
-              "kind": "text",
-              "text": "Retrieve",
-              "exact": true,
-              "confidence": 0.8,
+              "kind": "table_cell",
+              "rowMatch": "Value:",
+              "columnHeader": "Member Number Last Name",
+              "confidence": 0.85,
               "origin": "captured"
             },
             {
               "kind": "attribute",
-              "attr": "value",
-              "value": "Retrieve",
-              "confidence": 0.6499999999999999,
+              "attr": "name",
+              "value": "q",
+              "confidence": 0.7,
               "origin": "captured"
             },
             {
               "kind": "attribute",
               "attr": "type",
-              "value": "submit",
+              "value": "text",
               "confidence": 0.6499999999999999,
               "origin": "captured"
             },
             {
               "kind": "nth_of_role",
-              "role": "button",
+              "role": "textbox",
               "index": 0,
               "confidence": 0.55,
               "origin": "derived"
@@ -525,7 +547,96 @@
               "origin": "derived"
             }
           ],
-          "description": "button Retrieve"
+          "description": "textbox near Value:"
+        }
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "text_present",
+        "text": "SHARES / BALANCES",
+        "match": "contains",
+        "framePath": []
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s6",
+      "description": "The Value textbox could not be filled via its ref; submit the member-number search through the same search screen's query",
+      "action": {
+        "type": "navigate",
+        "url": "https://web-sample.interface-hiring.com/members?by=number&q={{inputs.memberNumber}}"
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "text_present",
+        "text": "Member No.",
+        "match": "contains",
+        "framePath": []
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s7",
+      "description": "Open the member record from the search result",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "link",
+          "name": "Select",
+          "nameMatch": "exact",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "link",
+              "name": "Select",
+              "exact": true,
+              "confidence": 0.95,
+              "origin": "captured"
+            },
+            {
+              "kind": "text",
+              "text": "Select",
+              "exact": true,
+              "confidence": 0.8,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "href",
+              "value": "/members/100234",
+              "confidence": 0.6499999999999999,
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "link",
+              "index": 4,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(4) > a:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "link Select"
         }
       },
       "risk": "safe",
@@ -534,46 +645,44 @@
         "kind": "control_present",
         "target": {
           "role": "cell",
-          "name": "1250.75",
+          "name": "Lovelace, Ada",
           "nameMatch": "exact",
-          "framePath": [
-            "content"
-          ],
+          "framePath": [],
           "scope": {
-            "withinRowMatching": "90000001",
-            "columnHeader": "Current Balance"
+            "withinRowMatching": "Member No.:",
+            "columnHeader": "Lovelace, Ada"
           },
           "strategies": [
             {
               "kind": "aria",
               "role": "cell",
-              "name": "1250.75",
+              "name": "Lovelace, Ada",
               "exact": true,
               "confidence": 0.95,
               "origin": "captured"
             },
             {
               "kind": "table_cell",
-              "rowMatch": "90000001",
-              "columnHeader": "Current Balance",
+              "rowMatch": "Member No.:",
+              "columnHeader": "Lovelace, Ada",
               "confidence": 0.85,
               "origin": "captured"
             },
             {
               "kind": "nth_of_role",
               "role": "cell",
-              "index": 12,
+              "index": 6,
               "confidence": 0.55,
               "origin": "derived"
             },
             {
               "kind": "css",
-              "selector": "table:nth-of-type(3) > tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(4)",
+              "selector": "table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(4)",
               "confidence": 0.4,
               "origin": "derived"
             }
           ],
-          "description": "cell 1250.75"
+          "description": "cell Lovelace, Ada"
         },
         "description": "the page holding the extracted data has loaded"
       },
@@ -586,12 +695,31 @@
       "onFailure": "fail"
     },
     {
-      "id": "s6",
-      "description": "cell 1250.75",
+      "id": "s8",
+      "description": "cell Lovelace, Ada",
       "action": {
         "type": "extract",
         "outputs": [
-          "savingsBalance"
+          "memberName"
+        ]
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s9",
+      "description": "cell $2,499.00",
+      "action": {
+        "type": "extract",
+        "outputs": [
+          "regularSharesS0001Balance"
         ]
       },
       "risk": "safe",
@@ -722,7 +850,7 @@
       "do": [
         {
           "type": "navigate",
-          "url": "http://127.0.0.1:4599/t/alpha/msc/login"
+          "url": "https://web-sample.interface-hiring.com/signon"
         },
         {
           "type": "type",
@@ -793,52 +921,50 @@
     "kind": "control_present",
     "target": {
       "role": "cell",
-      "name": "1250.75",
+      "name": "Lovelace, Ada",
       "nameMatch": "exact",
-      "framePath": [
-        "content"
-      ],
+      "framePath": [],
       "scope": {
-        "withinRowMatching": "90000001",
-        "columnHeader": "Current Balance"
+        "withinRowMatching": "Member No.:",
+        "columnHeader": "Lovelace, Ada"
       },
       "strategies": [
         {
           "kind": "aria",
           "role": "cell",
-          "name": "1250.75",
+          "name": "Lovelace, Ada",
           "exact": true,
           "confidence": 0.95,
           "origin": "captured"
         },
         {
           "kind": "table_cell",
-          "rowMatch": "90000001",
-          "columnHeader": "Current Balance",
+          "rowMatch": "Member No.:",
+          "columnHeader": "Lovelace, Ada",
           "confidence": 0.85,
           "origin": "captured"
         },
         {
           "kind": "nth_of_role",
           "role": "cell",
-          "index": 12,
+          "index": 6,
           "confidence": 0.55,
           "origin": "derived"
         },
         {
           "kind": "css",
-          "selector": "table:nth-of-type(3) > tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(4)",
+          "selector": "table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(4)",
           "confidence": 0.4,
           "origin": "derived"
         }
       ],
-      "description": "cell 1250.75"
+      "description": "cell Lovelace, Ada"
     },
     "description": "the declared outputs are present and extractable"
   },
   "policy": {
     "allowedOrigins": [
-      "http://127.0.0.1:4599"
+      "https://web-sample.interface-hiring.com"
     ],
     "allowedPathPatterns": [
       "/**"
@@ -861,22 +987,22 @@
     "timeoutMs": 120000
   },
   "provenance": {
-    "recordedAt": "2026-08-19T08:13:23.485Z",
-    "goal": "Sign in as the operator, look up member 10001, and read their Savings account balance",
+    "recordedAt": "2026-08-27T17:05:20.129Z",
+    "goal": "Sign on to Meridian Core as the operator, look up the member by member number, open the member record, and read the member's name and the balance of their Regular Shares (S0001) share",
     "model": "claude-opus-5",
-    "discoveryRunId": "discover-4b88b857e737",
+    "discoveryRunId": "discover-26fe8cc8e560",
     "surfaceSignature": {
       "browser": "chromium",
       "surface": "legacy-web"
     },
-    "llmStepCount": 11
+    "llmStepCount": 16
   },
   "stability": {
-    "runs": 8,
-    "successes": 6,
+    "runs": 1,
+    "successes": 0,
     "businessOutcomes": 0,
-    "failures": 2,
-    "lastRunAt": "2026-08-27T07:59:12.070Z"
+    "failures": 1,
+    "lastRunAt": "2026-08-27T17:06:31.178Z"
   },
   "tenantOverrides": {}
 }

@@ -1,0 +1,586 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "cap_meridian_share_open",
+  "name": "meridian.share.open",
+  "title": "Open a new share for a member",
+  "version": "1.0.0",
+  "description": "Signs on to Meridian Core, fills the member's Open New Share form, walks the review step, and opens the share.",
+  "approval": "approved",
+  "target": {
+    "surface": "legacy-web",
+    "app": "meridian-core",
+    "appVersion": "4.2.1",
+    "tenant": null,
+    "entryUrl": "https://web-sample.interface-hiring.com/signon",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    }
+  },
+  "inputs": [
+    {
+      "name": "memberNumber",
+      "type": "string",
+      "required": true,
+      "description": "The six-digit member number to open the share for.",
+      "pattern": "^[0-9]{6}$",
+      "sensitivity": "pii",
+      "example": "100234"
+    },
+    {
+      "name": "shareType",
+      "type": "enum",
+      "required": true,
+      "description": "The share type to open.",
+      "enumValues": [
+        "S0001",
+        "S0070",
+        "MMKT",
+        "CERT"
+      ],
+      "sensitivity": "public",
+      "example": "MMKT"
+    },
+    {
+      "name": "deposit",
+      "type": "string",
+      "required": true,
+      "description": "Initial deposit in dollars; the host requires at least 5.00.",
+      "pattern": "^[0-9]+(\\.[0-9]{1,2})?$",
+      "sensitivity": "public",
+      "example": "25.00"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "confirmationNumber",
+      "type": "string",
+      "description": "Confirmation number of the opened share.",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "td:text-is(\"Confirmation:\") + td",
+              "confidence": 0.9,
+              "origin": "derived"
+            }
+          ],
+          "description": "Value cell to the right of the Confirmation: label"
+        },
+        "transform": "trim"
+      }
+    },
+    {
+      "name": "newShareId",
+      "type": "string",
+      "description": "Share ID assigned to the new share.",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "td:text-is(\"New Share ID:\") + td",
+              "confidence": 0.9,
+              "origin": "derived"
+            }
+          ],
+          "description": "Value cell to the right of the New Share ID: label"
+        },
+        "transform": "trim"
+      }
+    }
+  ],
+  "secretsRequired": [
+    "MERIDIAN_OPERATOR",
+    "MERIDIAN_PASSWORD"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "description": "Enter the operator ID",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "operator",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Operator ID field"
+        },
+        "value": "{{secrets.MERIDIAN_OPERATOR}}",
+        "clearFirst": true
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "password",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Operator password field"
+        }
+      }
+    },
+    {
+      "id": "s2",
+      "description": "Enter the operator password",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "password",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Operator password field"
+        },
+        "value": "{{secrets.MERIDIAN_PASSWORD}}",
+        "clearFirst": true
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "button",
+          "name": "Sign On",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Sign On",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
+          ],
+          "description": "Sign On button"
+        }
+      }
+    },
+    {
+      "id": "s3",
+      "description": "Sign on to the console",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Sign On",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Sign On",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
+          ],
+          "description": "Sign On button"
+        }
+      },
+      "retries": {
+        "max": 1,
+        "backoffMs": 500
+      },
+      "postcondition": {
+        "kind": "text_present",
+        "text": "MAIN MENU",
+        "match": "contains",
+        "framePath": []
+      }
+    },
+    {
+      "id": "s4",
+      "description": "Open the member's Open New Share form",
+      "action": {
+        "type": "navigate",
+        "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/open-share"
+      },
+      "retries": {
+        "max": 1,
+        "backoffMs": 500
+      },
+      "postcondition": {
+        "kind": "text_present",
+        "text": "OPEN NEW SHARE",
+        "match": "contains",
+        "framePath": [],
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "id": "s5",
+      "description": "Choose the share type",
+      "action": {
+        "type": "select",
+        "target": {
+          "role": "combobox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "type",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Share Type list"
+        },
+        "value": "{{inputs.shareType}}"
+      }
+    },
+    {
+      "id": "s6",
+      "description": "Enter the initial deposit",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "deposit",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Initial Deposit field"
+        },
+        "value": "{{inputs.deposit}}",
+        "clearFirst": true
+      }
+    },
+    {
+      "id": "s7",
+      "description": "Continue to the share review screen",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Continue",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Continue",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
+          ],
+          "description": "Continue button"
+        }
+      },
+      "retries": {
+        "max": 1,
+        "backoffMs": 500
+      },
+      "postcondition": {
+        "kind": "text_present",
+        "text": "CONFIRM NEW SHARE",
+        "match": "contains",
+        "framePath": [],
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "id": "s8",
+      "description": "Open the reviewed share",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Open Share",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Open Share",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
+          ],
+          "description": "Open Share button"
+        }
+      },
+      "risk": "irreversible",
+      "onFailure": "escalate",
+      "postcondition": {
+        "kind": "text_present",
+        "text": "NEW SHARE ESTABLISHED",
+        "match": "contains",
+        "framePath": [],
+        "timeoutMs": 8000
+      }
+    }
+  ],
+  "outcomes": [
+    {
+      "code": "VALIDATION_REJECTED",
+      "description": "The application rejected the share request as entered.",
+      "detect": {
+        "kind": "text_present",
+        "text": "could not be validated",
+        "match": "contains",
+        "framePath": []
+      },
+      "terminal": true,
+      "outputs": [
+        {
+          "name": "validationMessage",
+          "type": "string",
+          "description": "The application's validation message.",
+          "required": false,
+          "sensitivity": "public",
+          "source": {
+            "kind": "text_of",
+            "target": {
+              "role": "text",
+              "framePath": [],
+              "scope": {
+                "nth": 0
+              },
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "li",
+                  "confidence": 0.7,
+                  "origin": "derived"
+                }
+              ],
+              "description": "First validation message item"
+            },
+            "transform": "trim"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TRANSACTION_REJECTED",
+      "description": "The host rejected the transaction.",
+      "detect": {
+        "kind": "text_present",
+        "text": "TRANSACTION REJECTED",
+        "match": "contains",
+        "framePath": []
+      },
+      "terminal": true,
+      "outputs": []
+    },
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "description": "No member record exists for the requested member number.",
+      "detect": {
+        "kind": "text_present",
+        "text": "RECORD NOT FOUND",
+        "match": "contains",
+        "framePath": []
+      },
+      "terminal": true,
+      "outputs": []
+    }
+  ],
+  "recoveries": [
+    {
+      "id": "dismiss_maintenance",
+      "description": "Dismiss the maintenance interstitial and return to the interrupted screen.",
+      "when": {
+        "kind": "text_present",
+        "text": "SCHEDULED MAINTENANCE IN PROGRESS",
+        "match": "contains",
+        "framePath": []
+      },
+      "do": [
+        {
+          "type": "click",
+          "target": {
+            "role": "link",
+            "name": "Continue",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "aria",
+                "role": "link",
+                "name": "Continue",
+                "exact": true,
+                "confidence": 0.99,
+                "origin": "captured"
+              }
+            ],
+            "description": "Continue link"
+          }
+        },
+        {
+          "type": "navigate",
+          "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/open-share"
+        }
+      ],
+      "maxAttempts": 3,
+      "thenRetryStep": true
+    },
+    {
+      "id": "reauthenticate",
+      "description": "Sign back on after an idle session timeout and return to the interrupted screen.",
+      "when": {
+        "kind": "text_present",
+        "text": "YOUR SESSION HAS TIMED OUT",
+        "match": "contains",
+        "framePath": []
+      },
+      "do": [
+        {
+          "type": "navigate",
+          "url": "https://web-sample.interface-hiring.com/signon"
+        },
+        {
+          "type": "type",
+          "target": {
+            "role": "textbox",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "attribute",
+                "attr": "name",
+                "value": "operator",
+                "confidence": 0.98,
+                "origin": "captured"
+              }
+            ],
+            "description": "Operator ID field"
+          },
+          "value": "{{secrets.MERIDIAN_OPERATOR}}",
+          "clearFirst": true
+        },
+        {
+          "type": "type",
+          "target": {
+            "role": "textbox",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "attribute",
+                "attr": "name",
+                "value": "password",
+                "confidence": 0.98,
+                "origin": "captured"
+              }
+            ],
+            "description": "Operator password field"
+          },
+          "value": "{{secrets.MERIDIAN_PASSWORD}}",
+          "clearFirst": true
+        },
+        {
+          "type": "click",
+          "target": {
+            "role": "button",
+            "name": "Sign On",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "aria",
+                "role": "button",
+                "name": "Sign On",
+                "exact": true,
+                "confidence": 0.99,
+                "origin": "captured"
+              }
+            ],
+            "description": "Sign On button"
+          }
+        },
+        {
+          "type": "navigate",
+          "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/open-share"
+        }
+      ],
+      "maxAttempts": 1,
+      "thenRetryStep": true
+    }
+  ],
+  "successCheckpoint": {
+    "kind": "text_present",
+    "text": "NEW SHARE ESTABLISHED",
+    "match": "contains",
+    "framePath": []
+  },
+  "policy": {
+    "allowedOrigins": [
+      "https://web-sample.interface-hiring.com"
+    ],
+    "allowedPathPatterns": [
+      "/**"
+    ],
+    "allowedActions": [
+      "navigate",
+      "click",
+      "type",
+      "select",
+      "press",
+      "wait",
+      "extract",
+      "assert"
+    ],
+    "maxRisk": "irreversible",
+    "requireApprovalFor": [],
+    "maxSteps": 25,
+    "timeoutMs": 120000
+  },
+  "provenance": {
+    "recordedAt": "2026-08-27T18:00:00.000Z",
+    "goal": "Prepare a new share opening in Meridian Core: sign on, open the member's Open New Share form, choose the share type, enter the initial deposit, and continue to the confirmation review screen. Stop at the review screen; do not post.",
+    "model": "claude-opus-5-then-hand-curated",
+    "discoveryRunId": "discover-f5658d8d61f8",
+    "surfaceSignature": {
+      "browser": "chromium",
+      "surface": "legacy-web"
+    },
+    "llmStepCount": 0
+  },
+  "stability": {
+    "runs": 0,
+    "successes": 0,
+    "businessOutcomes": 0,
+    "failures": 0,
+    "lastRunAt": null
+  },
+  "tenantOverrides": {}
+}
