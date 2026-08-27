@@ -7,4 +7,8 @@ dist/
 # they are a required deliverable (a saved artifact plus logs from a discovery run and a
 # replay run), not build noise.
 evidence/runs/tmp-*
+# Ad-hoc runs from the CLI and the console are named by run id; only the curated NN-* demo
+# runs above are deliverables.
+evidence/runs/replay-*
+evidence/runs/discover-*
 .DS_Store

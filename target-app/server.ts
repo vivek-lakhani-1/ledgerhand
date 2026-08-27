@@ -1,7 +1,7 @@
 import express, { type Request, type Response } from "express";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { getMember } from "./data.js";
 import {
   consumeSticky,
@@ -135,6 +135,12 @@ function nextReference(memberId: string): string {
   referenceCounters.set(memberId, next);
   return `SA-${memberId}-${String(next).padStart(4, "0")}`;
 }
+
+// Demo entry point, deliberately outside the /t/:tenant/msc surface that capabilities
+// automate: nothing recorded or replayed ever navigates here.
+app.get("/", (_req, res) => {
+  res.sendFile(resolve(dirname(fileURLToPath(import.meta.url)), "public", "index.html"));
+});
 
 app.get("/_health", (_req, res) => {
   res.json({ ok: true });

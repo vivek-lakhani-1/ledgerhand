@@ -33,10 +33,45 @@ ledgerhand() { npx --no-install tsx src/cli/index.ts "$@"; }
 | `ANTHROPIC_API_KEY` | Only for `discover` | Credentials for the one-time model-driven discovery run. |
 | `TARGET_APP_PORT` | No | Default target-app port, `4599`. |
 | `OPERATOR_PORT` | No | Default operator-console port, `4610`. |
+| `CONSOLE_PORT` | No | Default run-console port, `4620`. |
 | `APP_USER` | No | Local stand-in operator ID, default `OPER01`. |
 | `APP_PASSWORD` | No | Local stand-in password, default `demo-pass-01`. |
 
-Replay, catalog, invoke, the target app, and the operator console run without `ANTHROPIC_API_KEY`.
+Replay, catalog, invoke, the target app, the run console, and the operator console run without
+`ANTHROPIC_API_KEY`. The console's Discover tab disables itself, with the reason shown, when the key
+is absent.
+
+## Watching a run: the console
+
+The CLI runs one capability and prints the result after the fact. The console runs the same code
+and streams what it is doing while it happens, which is the faster way to see why a run went wrong.
+
+```bash
+ledgerhand app --port 4599      # terminal 1
+ledgerhand console --port 4620  # terminal 2
+```
+
+Open <http://127.0.0.1:4620>. The left column picks what to run; the right column is the live view:
+
+- **Live frame** — a screenshot of the automated browser, refreshed about once a second, and held
+  on the last frame when a run ends so a failing page stays on screen instead of going blank.
+- **Timeline** — every event the run emits, as it emits it. Rows expand to the raw JSON, and the
+  ones that explain a failure expand themselves: a denied `policy.decision`, a `checkpoint.evaluated`
+  that came back false, a step that ended `✗`. Turn off **Verbose** to hide the per-action
+  mechanics and leave just the step narrative.
+- **Result** — the same verdict the CLI prints, including expected/observed on a failure, the exit
+  code, and the evidence directory.
+
+Events reach the page through the same `RunLogger` the log file uses, after redaction, so the panel
+can never show a secret the log would have masked.
+
+The **Discover** tab runs the model against a goal instead of replaying an artifact, and the
+timeline shows the model's stated reason for each action it takes. It spends API credits per step,
+so it has a step cap and a **Stop** button that ends the run immediately — including a run parked
+on an escalation.
+
+Everything below still works from the CLI, and the CLI remains the scriptable path with meaningful
+exit codes.
 
 ## Exact demo path
 

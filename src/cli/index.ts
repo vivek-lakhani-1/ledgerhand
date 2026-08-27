@@ -6,6 +6,8 @@ import { randomUUID } from "node:crypto";
 import { Command } from "commander";
 import { startServer } from "../../target-app/server.js";
 import { loadCatalog, type CapabilityCatalog } from "../catalog/catalog.js";
+import { startConsoleServer } from "../console/console-server.js";
+import { RunHost } from "../console/run-host.js";
 import { EvidenceDir } from "../evidence/evidence.js";
 import { RunLogger } from "../evidence/logger.js";
 import { makeOperatorEscalator } from "../escalation/escalator.js";
@@ -21,7 +23,7 @@ import { BrowserSession } from "../session/session.js";
 import { Capability, type Capability as CapabilityValue, type ReplayResult } from "../schema/index.js";
 import { lintCapability } from "../schema/lint.js";
 import { WebSurface } from "../surface/web/web-surface.js";
-import type { Observation } from "../surface/types.js";
+import { withFramesetTextFallback } from "../surface/web/text-fallback.js";
 
 type ReplayCommandOptions = {
   input?: string[];
@@ -80,7 +82,7 @@ program
       viewport: { width: 1280, height: 900 },
       sessionId: `session-${runId}`,
     });
-    const surface = withCliTextFallback(new WebSurface({ session, policy, logger, caller: "automation" }), session);
+    const surface = withFramesetTextFallback(new WebSurface({ session, policy, logger, caller: "automation" }), session);
     let operator: Awaited<ReturnType<typeof startOperatorServer>> | undefined;
     try {
       if (options.operator) {
@@ -188,6 +190,23 @@ program
   });
 
 program
+  .command("console")
+  .description("Start the browser console that runs capabilities and streams what they do")
+  .option("--port <port>", "console port", process.env.CONSOLE_PORT ?? "4620")
+  .option("--target-app <url>", "target app base URL", `http://127.0.0.1:${process.env.TARGET_APP_PORT ?? "4599"}`)
+  .action(async (options: { port: string; targetApp: string }) => {
+    loadEnvFile();
+    const server = await startConsoleServer({
+      port: Number(options.port),
+      targetAppUrl: options.targetApp,
+      host: new RunHost({ secrets: secretValues, rootDir: process.cwd() }),
+    });
+    console.log(`[ledgerhand] console at ${server.url}`);
+    console.log(`[ledgerhand] target app expected at ${options.targetApp}`);
+    return neverResolve();
+  });
+
+program
   .command("operator")
   .description("Start the standalone operator console")
   .option("--port <port>", "operator port", process.env.OPERATOR_PORT ?? "4610")
@@ -221,7 +240,7 @@ async function runCapability(
     viewport: capability.target.viewport,
     sessionId: `session-${runId}`,
   });
-  const surface = withCliTextFallback(new WebSurface({ session, policy, logger, caller: "automation" }), session);
+  const surface = withFramesetTextFallback(new WebSurface({ session, policy, logger, caller: "automation" }), session);
   let operator: Awaited<ReturnType<typeof startOperatorServer>> | undefined;
   try {
     let escalate: ReturnType<typeof makeOperatorEscalator> | undefined;
@@ -338,44 +357,6 @@ function parseJsonObject(value: string): Record<string, unknown> {
 function secretValues(): string[] {
   return [process.env.APP_USER, process.env.APP_PASSWORD, process.env.ANTHROPIC_API_KEY, process.env.ANTHROPIC_AUTH_TOKEN]
     .filter((value): value is string => Boolean(value));
-}
-
-/**
- * In a separate CLI process, a legacy frameset can finish its document swap after the
- * perception callback has inspected the frame. Preserve the observation and fill only
- * an empty frame text from the same live frame body before replay evaluates text checkpoints.
- */
-function withCliTextFallback(surface: WebSurface, session: BrowserSession): WebSurface {
-  const observe = surface.observe.bind(surface);
-  surface.observe = async (): Promise<Observation> => {
-    const observation = await observe();
-    if (observation.frames.every((frame) => frame.text.length > 0)) return observation;
-    const frames = await Promise.all(observation.frames.map(async (frameInfo) => {
-      if (frameInfo.text.length > 0) return frameInfo;
-      const liveFrame = session.page.frames().find((candidate) => samePath(framePath(candidate), frameInfo.path));
-      const text = liveFrame ? await liveFrame.locator("body").innerText({ timeout: 1000 }).catch(() => "") : "";
-      return text ? { ...frameInfo, text } : frameInfo;
-    }));
-    return { ...observation, frames };
-  };
-  return surface;
-}
-
-function framePath(frame: import("playwright").Frame): string[] {
-  const pathParts: string[] = [];
-  let current: import("playwright").Frame | null = frame;
-  while (current?.parentFrame()) {
-    const parent = current.parentFrame();
-    if (!parent) break;
-    const index = parent.childFrames().indexOf(current);
-    pathParts.unshift(current.name() || `frame-${Math.max(index, 0)}`);
-    current = parent;
-  }
-  return pathParts;
-}
-
-function samePath(left: string[], right: string[]): boolean {
-  return left.length === right.length && left.every((part, index) => part === right[index]);
 }
 
 function collect(value: string, previous: string[]): string[] {

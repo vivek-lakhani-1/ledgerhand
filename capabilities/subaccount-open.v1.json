@@ -305,7 +305,7 @@
     }
   ],
   "recoveries": [],
-  "successCheckpoint": { "kind": "text_present", "text": "Review New Sub-Account", "match": "contains", "framePath": ["content"] },
+  "successCheckpoint": { "kind": "text_present", "text": "SUB-ACCOUNT CREATED", "match": "contains", "framePath": ["content"] },
   "policy": {
     "allowedOrigins": ["http://127.0.0.1:4599"],
     "allowedPathPatterns": ["/**"],

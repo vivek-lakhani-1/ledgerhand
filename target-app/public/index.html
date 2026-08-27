@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ledgerhand Demo</title>
+  <style>
+    :root { color-scheme: dark; font: 14px/1.4 system-ui, sans-serif; }
+    body { margin: 0; background: #11151b; color: #e9eef5; }
+    main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 56px; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    h2 { font-size: 15px; margin: 0 0 10px; }
+    h3 { font-size: 13px; margin: 0 0 6px; color: #aebbd0; }
+    p { margin: 0 0 12px; color: #c3cede; max-width: 74ch; }
+    a { color: #79b8ec; }
+    a:focus-visible, button:focus-visible { outline: 2px solid #79b8ec; outline-offset: 2px; }
+    header { border-bottom: 1px solid #303a47; padding-bottom: 14px; margin-bottom: 20px; }
+    .lede { color: #9baabd; margin: 0; }
+    section { background: #1a2029; border: 1px solid #303a47; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+    .tenant { border: 1px solid #394554; border-radius: 6px; padding: 13px; background: #222a35; }
+    .chip { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; letter-spacing: .04em; color: #fff; margin-bottom: 8px; }
+    dl { display: grid; grid-template-columns: 128px 1fr; gap: 5px 10px; margin: 0 0 12px; font-size: 13px; }
+    dt { color: #9baabd; } dd { margin: 0; overflow-wrap: anywhere; }
+    code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+    code { background: #12181f; padding: 1px 5px; border-radius: 3px; color: #d6e2f0; }
+    button { font: inherit; color: inherit; background: #252e3a; border: 1px solid #445264; border-radius: 4px; padding: 6px 10px; cursor: pointer; }
+    button:hover { border-color: #79b8ec; }
+    button[aria-pressed="true"] { border-color: #f2c879; color: #f2c879; }
+    .row { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+    .status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #9baabd; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #5b6675; flex: none; }
+    .dot.up { background: #9bd18b; } .dot.down { background: #e08a80; }
+    .cmd { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; }
+    .cmd pre { flex: 1; margin: 0; background: #12181f; border: 1px solid #2b3540; border-radius: 5px; padding: 9px 11px; overflow-x: auto; color: #d6e2f0; }
+    .cmd button { flex: none; }
+    .hint { color: #9baabd; font-size: 12.5px; margin: 0 0 10px; }
+    #message { min-height: 20px; color: #f2c879; font-size: 13px; }
+    ul { margin: 0 0 12px; padding-left: 20px; color: #c3cede; }
+    li { margin-bottom: 5px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; color: #9baabd; font-weight: 600; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; padding: 0 10px 6px 0; border-bottom: 1px solid #303a47; }
+    td { padding: 7px 10px 7px 0; border-bottom: 1px solid #262f3a; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Ledgerhand demo</h1>
+    <p class="lede">Entry point for the local legacy-bank stand-in. This page is not part of the console being automated — no capability navigates here.</p>
+  </header>
+
+  <section>
+    <h2>Services</h2>
+    <div class="row" style="gap: 18px">
+      <span class="status"><span class="dot up" id="dot-app"></span><span id="stat-app">Target app · this page · port 4599</span></span>
+      <span class="status"><span class="dot" id="dot-op"></span><span id="stat-op">Operator console · checking…</span></span>
+    </div>
+    <p class="hint" style="margin-top:12px">The operator console only runs during an escalation. Start it with <code>ledgerhand replay … --operator</code>, or standalone with <code>ledgerhand operator</code>. The automation browser is headless and has no port — pass <code>--headed</code> to watch it.</p>
+  </section>
+
+  <section>
+    <h2>Sign on</h2>
+    <p>Two tenants run the same vendor product with different branding, field labels, buttons and column headers. One recorded artifact replays against both.</p>
+    <div class="grid">
+      <div class="tenant">
+        <span class="chip" style="background:#0b6b6b">ALPHA</span>
+        <h3>MERIDIAN CREDIT UNION</h3>
+        <dl>
+          <dt>Member field</dt><dd>Member ID:</dd>
+          <dt>Search button</dt><dd>Retrieve</dd>
+          <dt>Balance column</dt><dd>Current Balance</dd>
+        </dl>
+        <a href="/t/alpha/msc/login">Open alpha console →</a>
+      </div>
+      <div class="tenant">
+        <span class="chip" style="background:#7a1f2b">BETA</span>
+        <h3>NORTHBAY FCU</h3>
+        <dl>
+          <dt>Member field</dt><dd>Account Number:</dd>
+          <dt>Search button</dt><dd>Search</dd>
+          <dt>Balance column</dt><dd>Balance (USD)</dd>
+        </dl>
+        <a href="/t/beta/msc/login">Open beta console →</a>
+      </div>
+    </div>
+    <p class="hint" style="margin-top:14px">Operator <code>OPER01</code> · password <code>demo-pass-01</code> · member <code>10001</code> (Ada Exampleton, savings 1250.75)</p>
+  </section>
+
+  <section>
+    <h2>Fault injection</h2>
+    <p>Force the next request into a condition, then replay or browse to see how it is handled. Sticky modes stay until reset; the others clear themselves after one request.</p>
+    <div class="row" id="inject"></div>
+    <p id="message" role="status"></p>
+    <table>
+      <thead><tr><th>Mode</th><th>What the app does</th><th>How replay classifies it</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">not_found</td><td>Member lookup returns no record</td><td>Business outcome — a legitimate answer, exit 0</td></tr>
+        <tr><td class="mono">permission_denied</td><td>Operator lacks rights for the record</td><td>Business outcome, exit 0</td></tr>
+        <tr><td class="mono">validation</td><td>Form rejects the submitted value</td><td>Business outcome, exit 0</td></tr>
+        <tr><td class="mono">app_error</td><td>HTTP 500 with <code>APPLICATION ERROR - REF 0x5A2</code></td><td>Failure — exit 1</td></tr>
+        <tr><td class="mono">session_expired</td><td>Bounces back to the sign-on page</td><td>Failure, recoverable by re-login</td></tr>
+        <tr><td class="mono">interstitial</td><td>Injects a splash page before the real one</td><td>Absorbed by the settle step</td></tr>
+        <tr><td class="mono">slow</td><td>Delays the response</td><td>Absorbed by timeouts, or exit 1 on timeout</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Run the demo</h2>
+    <p class="hint">Define the shorthand once per terminal, from the repository root on Node 20:</p>
+    <div class="cmd"><pre>nvm use 20
+ledgerhand() { npx --no-install tsx src/cli/index.ts "$@"; }</pre><button data-copy>Copy</button></div>
+
+    <h3>Replay with no model in the loop</h3>
+    <div class="cmd"><pre>ledgerhand replay capabilities/member-savings-balance.v1.json --input memberId=10001</pre><button data-copy>Copy</button></div>
+
+    <h3>Watch the browser do it</h3>
+    <div class="cmd"><pre>ledgerhand replay capabilities/member-savings-balance.v1.json --input memberId=10001 --headed</pre><button data-copy>Copy</button></div>
+
+    <h3>Same artifact against beta</h3>
+    <div class="cmd"><pre>ledgerhand replay capabilities/member-savings-balance.v1.json --input memberId=10001 --tenant beta</pre><button data-copy>Copy</button></div>
+
+    <h3>Agent-facing catalog</h3>
+    <div class="cmd"><pre>ledgerhand catalog tools
+ledgerhand invoke member.savings_balance.lookup --input '{"memberId":"10001"}'</pre><button data-copy>Copy</button></div>
+
+    <h3>Escalate to a human at the irreversible step</h3>
+    <div class="cmd"><pre>ledgerhand replay capabilities/subaccount-open.v1.json --input memberId=10001 --operator</pre><button data-copy>Copy</button></div>
+
+    <h3>Record a new capability (needs ANTHROPIC_API_KEY)</h3>
+    <div class="cmd"><pre>ledgerhand discover --goal "Look up a member savings balance" \
+  --url http://127.0.0.1:4599/t/alpha/msc/login --input memberId=10001</pre><button data-copy>Copy</button></div>
+  </section>
+
+  <section>
+    <h2>Exit codes</h2>
+    <ul>
+      <li><code>0</code> — success, or a declared business outcome such as member not found</li>
+      <li><code>1</code> — failure; the step, expected action and observed page are printed</li>
+      <li><code>2</code> — escalated to a human and left unresolved</li>
+    </ul>
+    <p class="hint">Every run writes evidence to <code>evidence/runs/&lt;runId&gt;/</code>: an ordered JSONL log, screenshots and DOM snapshots at failures, and the exact artifact as executed.</p>
+  </section>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const modes = ["not_found", "permission_denied", "validation", "app_error", "session_expired", "interstitial", "slow"];
+  const message = (text) => { $("message").textContent = text; };
+
+  const container = $("inject");
+  for (const mode of modes) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = mode;
+    button.dataset.mode = mode;
+    button.setAttribute("aria-pressed", "false");
+    container.appendChild(button);
+  }
+  const reset = document.createElement("button");
+  reset.type = "button";
+  reset.textContent = "Reset";
+  reset.dataset.reset = "true";
+  container.appendChild(reset);
+
+  container.addEventListener("click", async (event) => {
+    const button = event.target.closest("button");
+    if (!button) return;
+    try {
+      if (button.dataset.reset) {
+        await post("/_reset", {});
+        container.querySelectorAll("[data-mode]").forEach((other) => other.setAttribute("aria-pressed", "false"));
+        message("Injection cleared.");
+        return;
+      }
+      const state = await post("/_inject", { mode: button.dataset.mode });
+      container.querySelectorAll("[data-mode]").forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
+      // A negative ttl is the server's marker for a sticky mode, not a countdown.
+      const scope = state.ttlRequests < 0
+        ? "stays until you reset it"
+        : `applies to the next ${state.ttlRequests} request${state.ttlRequests === 1 ? "" : "s"}`;
+      message(`Armed ${state.mode} — ${scope}.`);
+    } catch (error) {
+      message(error.message);
+    }
+  });
+
+  async function post(url, body) {
+    const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+    return payload;
+  }
+
+  document.querySelectorAll("[data-copy]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const text = button.previousElementSibling.textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        button.textContent = "Copied";
+      } catch {
+        button.textContent = "Copy failed";
+      }
+      setTimeout(() => { button.textContent = "Copy"; }, 1400);
+    });
+  });
+
+  // The console runs on its own port, so this is a cross-origin probe: a resolved fetch means
+  // it answered, and a rejection means nothing is listening. The response body is unreadable
+  // under no-cors and is not needed.
+  async function probeOperator() {
+    try {
+      await fetch("http://127.0.0.1:4610/api/interventions", { mode: "no-cors", cache: "no-store" });
+      $("dot-op").className = "dot up";
+      $("stat-op").innerHTML = 'Operator console · <a href="http://127.0.0.1:4610">port 4610</a>';
+    } catch {
+      $("dot-op").className = "dot down";
+      $("stat-op").textContent = "Operator console · port 4610 · not running";
+    }
+  }
+  probeOperator();
+  setInterval(probeOperator, 4000);
+})();
+</script>
+</body>
+</html>

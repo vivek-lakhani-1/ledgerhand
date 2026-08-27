@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ledgerhand Console</title>
+  <style>
+    :root { color-scheme: dark; font: 14px/1.4 system-ui, sans-serif; }
+    body { margin: 0; background: #11151b; color: #e9eef5; }
+    main { display: grid; grid-template-columns: minmax(320px, 0.85fr) minmax(520px, 1.15fr); gap: 14px; height: 100vh; padding: 14px; box-sizing: border-box; }
+    section { background: #1a2029; border: 1px solid #303a47; border-radius: 8px; padding: 14px; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+    h1 { font-size: 17px; margin: 0 0 3px; }
+    h2 { font-size: 14px; margin: 14px 0 8px; }
+    h3 { font-size: 12px; margin: 0 0 6px; color: #aebbd0; text-transform: uppercase; letter-spacing: .06em; }
+    .lede { color: #9baabd; font-size: 12.5px; margin: 0 0 12px; }
+    .scroll { overflow-y: auto; flex: 1; min-height: 0; }
+    label { display: block; font-size: 12px; color: #9baabd; margin: 0 0 4px; }
+    button, input, select, textarea { font: inherit; color: inherit; background: #252e3a; border: 1px solid #445264; border-radius: 4px; padding: 7px 9px; box-sizing: border-box; }
+    input, select, textarea { width: 100%; }
+    textarea { resize: vertical; }
+    button { cursor: pointer; width: auto; }
+    button:hover:not(:disabled) { border-color: #79b8ec; }
+    button:disabled, input:disabled, select:disabled, textarea:disabled { opacity: .45; cursor: not-allowed; }
+    button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid #79b8ec; outline-offset: 1px; }
+    .primary { background: #1f4a6d; border-color: #2f6d9e; font-weight: 600; }
+    .danger { background: #4a2222; border-color: #7c3b3b; }
+    .field { margin-bottom: 10px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .row > .field { flex: 1; margin-bottom: 0; }
+    .check { display: flex; gap: 7px; align-items: center; font-size: 12.5px; color: #c3cede; }
+    .check input { width: auto; }
+    a { color: #79b8ec; }
+    code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+
+    .tabs { display: flex; gap: 6px; margin-bottom: 12px; border-bottom: 1px solid #303a47; }
+    .tab { background: none; border: none; border-bottom: 2px solid transparent; border-radius: 0; padding: 7px 11px; color: #9baabd; }
+    .tab[aria-selected="true"] { color: #e9eef5; border-bottom-color: #79b8ec; }
+
+    .meta { background: #12181f; border: 1px solid #2b3540; border-radius: 5px; padding: 9px 10px; font-size: 12px; color: #c3cede; margin-bottom: 12px; }
+    .meta dl { display: grid; grid-template-columns: 84px 1fr; gap: 3px 9px; margin: 6px 0 0; }
+    .meta dt { color: #9baabd; } .meta dd { margin: 0; overflow-wrap: anywhere; }
+    .warn-chip { display: inline-block; background: #3a2c14; border: 1px solid #7a5c26; color: #f2c879; border-radius: 4px; padding: 5px 8px; font-size: 12px; margin-bottom: 10px; }
+
+    #runs { display: grid; gap: 5px; }
+    .run-item { width: 100%; text-align: left; padding: 7px 9px; background: #222a35; border: 1px solid #394554; border-radius: 5px; font-size: 12.5px; }
+    .run-item.selected { border-color: #63b3ed; background: #26394d; }
+    .run-item .when { color: #8b98a9; font-size: 11px; }
+
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: .03em; border: 1px solid; }
+    .pill.running { color: #79b8ec; border-color: #2f6d9e; background: #16293a; }
+    .pill.ok { color: #9bd18b; border-color: #3f6b36; background: #17281a; }
+    .pill.bad { color: #e08a80; border-color: #7c3b3b; background: #2b1818; }
+    .pill.warn { color: #f2c879; border-color: #7a5c26; background: #2b2314; }
+    .pill.idle { color: #9baabd; border-color: #445264; background: #1e2530; }
+
+    #side-head { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 10px; }
+    #side-head h1 { margin: 0; }
+    #frame-wrap { position: relative; background: #090b0e; border: 1px solid #3a4653; border-radius: 5px; margin-bottom: 10px; flex: none; }
+    #frame { display: block; width: 100%; height: 34vh; object-fit: contain; }
+    #frame-note { position: absolute; right: 6px; bottom: 6px; background: #0009; padding: 2px 7px; border-radius: 3px; font-size: 11px; color: #c3cede; }
+
+    #timeline { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
+    .ev { border-left: 3px solid #3a4653; background: #161c24; border-radius: 0 4px 4px 0; }
+    .ev summary { padding: 5px 9px; cursor: pointer; display: flex; gap: 8px; align-items: baseline; list-style: none; }
+    .ev summary::-webkit-details-marker { display: none; }
+    .ev .seq { color: #6d7a8b; font-size: 11px; min-width: 26px; font-variant-numeric: tabular-nums; }
+    .ev .title { flex: 1; overflow-wrap: anywhere; }
+    .ev .sub { color: #9baabd; }
+    .ev pre { margin: 0; padding: 8px 10px 10px 40px; white-space: pre-wrap; overflow-wrap: anywhere; color: #b9c6d6; font-size: 11.5px; }
+    .ev.ok { border-left-color: #4e8b40; }
+    .ev.bad { border-left-color: #b8564a; background: #211719; }
+    .ev.warn { border-left-color: #a9822f; }
+    .ev.step { border-left-color: #4a7fb5; background: #182029; }
+    .ev.model { border-left-color: #8a6bb8; background: #1c1a26; }
+    .ev.hilite { box-shadow: 0 0 0 1px #b8564a; }
+    .kv { color: #8fb6d9; }
+
+    #result { margin-top: 10px; flex: none; }
+    .result-box { border: 1px solid #3a4653; border-radius: 5px; padding: 11px; background: #12181f; font-size: 12.5px; }
+    .result-box.ok { border-color: #3f6b36; } .result-box.bad { border-color: #7c3b3b; } .result-box.warn { border-color: #7a5c26; }
+    .result-box dl { display: grid; grid-template-columns: 106px 1fr; gap: 4px 10px; margin: 8px 0 0; }
+    .result-box dt { color: #9baabd; } .result-box dd { margin: 0; overflow-wrap: anywhere; }
+    .empty { color: #8b98a9; font-size: 12.5px; padding: 14px 0; }
+    #message { min-height: 18px; color: #f2c879; font-size: 12.5px; margin-top: 8px; }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; height: auto; } #frame { height: 42vh; } }
+  </style>
+</head>
+<body>
+<main>
+  <section id="launcher">
+    <h1>Ledgerhand console</h1>
+    <p class="lede">Run a capability and watch it happen. Everything the run emits streams into the panel on the right.</p>
+
+    <div class="tabs" role="tablist">
+      <button class="tab" id="tab-replay" role="tab" aria-selected="true" aria-controls="panel-replay">Replay</button>
+      <button class="tab" id="tab-discover" role="tab" aria-selected="false" aria-controls="panel-discover">Discover</button>
+    </div>
+
+    <div class="scroll">
+      <div id="panel-replay" role="tabpanel" aria-labelledby="tab-replay">
+        <div class="field">
+          <label for="capability">Capability</label>
+          <select id="capability"><option>Loading…</option></select>
+        </div>
+        <div class="meta" id="capability-meta">Select a capability.</div>
+        <div id="inputs"></div>
+        <div class="row" style="margin-bottom:10px">
+          <div class="field">
+            <label for="tenant">Tenant</label>
+            <select id="tenant"></select>
+          </div>
+          <div class="field">
+            <label for="inject">Inject fault</label>
+            <select id="inject"></select>
+          </div>
+        </div>
+        <label class="check" style="margin-bottom:12px">
+          <input type="checkbox" id="operator-replay">
+          Start operator console (needed for irreversible steps)
+        </label>
+        <button class="primary" id="run-replay">Run replay</button>
+      </div>
+
+      <div id="panel-discover" role="tabpanel" aria-labelledby="tab-discover" hidden>
+        <div class="warn-chip" id="discover-warning">
+          Discovery drives the app with the model and spends API credits on every step. Use the step cap and Stop.
+        </div>
+        <div class="field">
+          <label for="goal">Goal</label>
+          <textarea id="goal" rows="2" placeholder="Look up a member savings balance"></textarea>
+        </div>
+        <div class="field">
+          <label for="entry-url">Entry URL</label>
+          <input id="entry-url" type="text" placeholder="http://127.0.0.1:4599/t/alpha/msc/login">
+        </div>
+        <div class="field">
+          <label for="discover-inputs">Inputs — one <code>key=value</code> per line</label>
+          <textarea id="discover-inputs" rows="3" placeholder="memberId=10001"></textarea>
+        </div>
+        <div class="row" style="margin-bottom:10px">
+          <div class="field">
+            <label for="max-steps">Max model steps</label>
+            <input id="max-steps" type="number" min="1" max="60" value="25">
+          </div>
+        </div>
+        <label class="check" style="margin-bottom:12px">
+          <input type="checkbox" id="operator-discover">
+          Start operator console alongside discovery
+        </label>
+        <button class="primary" id="run-discover">Run discovery</button>
+      </div>
+
+      <div id="message" role="status"></div>
+
+      <h2>Recent runs</h2>
+      <div id="runs"><p class="empty">No runs yet.</p></div>
+    </div>
+  </section>
+
+  <section id="side">
+    <div id="side-head">
+      <h1 id="side-title">Live run</h1>
+      <span class="pill idle" id="side-status">idle</span>
+      <span style="flex:1"></span>
+      <a id="operator-link" href="#" target="_blank" rel="noopener" hidden>Operator console ↗</a>
+      <label class="check"><input type="checkbox" id="verbose" checked> Verbose</label>
+      <button class="danger" id="stop" disabled>Stop</button>
+    </div>
+
+    <div id="frame-wrap">
+      <img id="frame" alt="Live view of the automated browser page">
+      <span id="frame-note" hidden></span>
+    </div>
+
+    <h3>Timeline</h3>
+    <div class="scroll" id="timeline-wrap">
+      <div id="timeline"><p class="empty">Start a run to see what it does, step by step.</p></div>
+    </div>
+
+    <div id="result"></div>
+  </section>
+</main>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const state = {
+  config: null,
+  capabilities: [],
+  runId: null,
+  stream: null,
+  frameTimer: null,
+  frameUrl: null,
+  status: null,
+  // Event types that are mechanism rather than narrative; hidden unless Verbose is on.
+  noisy: new Set(["policy.decision", "target.resolved", "action.performed"]),
+};
+
+// ---------------------------------------------------------------- rendering
+
+/**
+ * Turns one RunEvent into a timeline row. The point is that a failing run should be
+ * debuggable from this list alone, so the fields that explain a failure -- which strategy
+ * resolved a target, what a checkpoint expected versus saw -- are in the summary line and
+ * not buried in the raw JSON.
+ */
+function describe(ev) {
+  const t = ev.type;
+  const step = ev.stepId ? `${ev.stepId} ` : "";
+  switch (t) {
+    case "run.start":
+      return ev.origin === "discovery"
+        ? { tone: "step", title: "Discovery started", sub: ev.goal }
+        : { tone: "step", title: "Run started", sub: `${ev.capabilityId ?? ""} v${ev.capabilityVersion ?? ""} · tenant ${ev.tenant ?? "base"}` };
+    case "step.start":
+      return { tone: "step", title: `▶ ${ev.stepId}`, sub: ev.description + (ev.attempt ? ` (attempt ${ev.attempt + 1})` : "") };
+    case "policy.decision":
+      return { tone: ev.decision === "allow" ? "" : "bad", title: `policy ${ev.decision}`, sub: `${ev.action} → ${ev.resolvedUrl ?? ""}${ev.reason ? ` · ${ev.reason}` : ""}` };
+    case "target.resolved":
+      return { tone: "", title: `resolved ${ev.action}`, sub: `by ${ev.resolvedBy}${ev.strategyIndex === undefined ? "" : ` #${ev.strategyIndex}`}` };
+    case "action.performed":
+      return ev.origin === "discovery"
+        ? { tone: "model", title: ev.why || `model: ${ev.action}`, sub: `${ev.action}` }
+        : { tone: "", title: `${ev.action}`, sub: `via ${ev.strategy}` };
+    case "checkpoint.evaluated":
+      return { tone: ev.ok ? "ok" : "bad", title: `${step}checkpoint ${ev.kind} ${ev.ok ? "✓" : "✗"}`, sub: `${ev.phase}${ev.observed ? ` · observed: ${truncate(ev.observed)}` : ""}` };
+    case "outcome.matched":
+      return { tone: "warn", title: `business outcome ${ev.code}`, sub: ev.message };
+    case "recovery.applied":
+      return { tone: "warn", title: `${step}recovery ${ev.recoveryId}`, sub: `attempt ${ev.attempt ?? 1}` };
+    case "retry":
+      return { tone: "warn", title: `${step}retry ${ev.attempt ?? ""}`, sub: `${ev.class ?? ev.reason ?? ""} · backoff ${ev.backoffMs ?? 0}ms` };
+    case "escalation.raised":
+      return { tone: "warn", title: "escalation raised", sub: ev.reason };
+    case "human.action":
+      return { tone: "warn", title: "human action", sub: ev.kind ?? "" };
+    case "human.resolved":
+      return { tone: "warn", title: `human ${ev.decision ?? "resolved"}`, sub: ev.note ?? "" };
+    case "drift.proposed":
+      return { tone: "warn", title: `${step}drift proposed`, sub: ev.proposalPath ?? "" };
+    case "drift.summary":
+      return { tone: "", title: "drift summary", sub: `tenant ${ev.tenant}` };
+    case "recorder.outcome_dropped":
+      return { tone: "warn", title: "recorder dropped an asserted outcome", sub: ev.reason ?? "" };
+    case "step.end": {
+      const bad = typeof ev.summary === "string" && ev.summary.startsWith("✗");
+      return { tone: bad ? "bad" : "ok", title: `${ev.stepId} ${ev.summary ?? ""}`, sub: [ev.description, ev.value ? `← ${ev.value}` : ""].filter(Boolean).join(" ") };
+    }
+    case "run.end":
+      return { tone: ev.status === "success" ? "ok" : ev.status === "failed" ? "bad" : "warn", title: `Run ended: ${ev.status}`, sub: ev.durationMs ? `${ev.durationMs}ms` : "" };
+    default:
+      return { tone: "", title: t, sub: "" };
+  }
+}
+
+function truncate(value, max = 160) {
+  const text = String(value).replace(/\s+/g, " ").trim();
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+function shouldExpand(ev) {
+  if (ev.type === "policy.decision" && ev.decision !== "allow") return true;
+  if (ev.type === "checkpoint.evaluated" && ev.ok === false) return true;
+  if (ev.type === "step.end" && typeof ev.summary === "string" && ev.summary.startsWith("✗")) return true;
+  return ev.type === "escalation.raised";
+}
+
+function appendEvent(ev) {
+  const timeline = $("timeline");
+  timeline.querySelector(".empty")?.remove();
+  const { tone, title, sub } = describe(ev);
+  const row = document.createElement("details");
+  row.className = `ev ${tone}`;
+  row.dataset.type = ev.type;
+  if (shouldExpand(ev)) { row.open = true; row.classList.add("hilite"); }
+  if (state.noisy.has(ev.type) && !$("verbose").checked) row.hidden = true;
+
+  const summary = document.createElement("summary");
+  summary.innerHTML = `<span class="seq">${ev.seq}</span><span class="title"></span>`;
+  const titleEl = summary.querySelector(".title");
+  titleEl.textContent = title;
+  if (sub) {
+    const subEl = document.createElement("span");
+    subEl.className = "sub";
+    subEl.textContent = ` — ${sub}`;
+    titleEl.append(subEl);
+  }
+  const pre = document.createElement("pre");
+  pre.textContent = JSON.stringify(ev, null, 2);
+  row.append(summary, pre);
+  timeline.append(row);
+
+  const wrap = $("timeline-wrap");
+  // Only chase the tail if the reader is already at it; scrolling up to inspect a failed
+  // step must not be yanked away by the next event.
+  if (wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 90) wrap.scrollTop = wrap.scrollHeight;
+}
+
+function applyVerbose() {
+  const on = $("verbose").checked;
+  for (const row of document.querySelectorAll(".ev")) {
+    if (state.noisy.has(row.dataset.type)) row.hidden = !on;
+  }
+}
+
+function statusTone(summary) {
+  if (summary.status === "running" || summary.status === "starting") return "running";
+  if (summary.status === "errored") return "bad";
+  if (summary.status === "stopped") return "warn";
+  if (summary.kind === "discovery") return summary.discovery?.status === "completed" ? "ok" : "warn";
+  const status = summary.result?.status;
+  if (status === "success" || status === "business_outcome") return "ok";
+  if (status === "escalated") return "warn";
+  return status === "failed" ? "bad" : "idle";
+}
+
+function statusLabel(summary) {
+  if (summary.status === "running" || summary.status === "starting") return summary.status;
+  if (summary.status === "errored") return "errored";
+  if (summary.status === "stopped") return "stopped";
+  if (summary.kind === "discovery") return summary.discovery?.status ?? "finished";
+  return summary.result?.status ?? "finished";
+}
+
+function renderResult(summary) {
+  const box = $("result");
+  const done = summary.status === "finished" || summary.status === "errored" || summary.status === "stopped";
+  if (!done) { box.innerHTML = ""; return; }
+
+  const rows = [];
+  let tone = "warn";
+  let headline = "";
+
+  if (summary.status === "errored") {
+    tone = "bad";
+    headline = "ERRORED";
+    rows.push(["error", summary.error]);
+  } else if (summary.status === "stopped") {
+    headline = "STOPPED";
+    rows.push(["reason", "Stopped from the console before it finished"]);
+  } else if (summary.kind === "discovery") {
+    const d = summary.discovery ?? {};
+    tone = d.status === "completed" ? "ok" : "warn";
+    headline = `DISCOVERY ${String(d.status ?? "").toUpperCase()}`;
+    if (d.capabilityPath) rows.push(["wrote", d.capabilityPath]);
+    if (d.reason) rows.push(["reason", d.reason]);
+    rows.push(["model steps", d.traceLength]);
+  } else {
+    const r = summary.result ?? {};
+    if (r.status === "success") {
+      tone = "ok";
+      headline = "SUCCESS";
+      for (const [key, value] of Object.entries(r.outputs ?? {})) rows.push([key, value]);
+      rows.push(["steps", r.stepsExecuted]);
+    } else if (r.status === "business_outcome") {
+      tone = "ok";
+      headline = `BUSINESS OUTCOME · ${r.code}`;
+      rows.push(["message", r.message]);
+      rows.push(["at step", r.atStepId]);
+      rows.push(["note", "A legitimate answer, not a failure — exit 0."]);
+    } else if (r.status === "escalated") {
+      headline = "ESCALATED";
+      rows.push(["reason", r.reason]);
+      rows.push(["at step", r.atStepId]);
+    } else if (r.status === "failed") {
+      tone = "bad";
+      headline = `FAILED · ${r.error?.class ?? ""}`;
+      rows.push(["at step", `${r.error?.stepId ?? "run"}${r.error?.stepDescription ? ` — ${r.error.stepDescription}` : ""}`]);
+      rows.push(["expected", r.error?.expected]);
+      rows.push(["observed", r.error?.observed]);
+      rows.push(["message", r.error?.message]);
+    }
+    if (r.evidenceDir) rows.push(["evidence", r.evidenceDir]);
+  }
+  rows.push(["exit code", summary.exitCode]);
+
+  box.innerHTML = `<div class="result-box ${tone}"><strong>${headline}</strong><dl></dl></div>`;
+  const dl = box.querySelector("dl");
+  for (const [key, value] of rows) {
+    if (value === undefined || value === null || value === "") continue;
+    const dt = document.createElement("dt");
+    dt.textContent = key;
+    const dd = document.createElement("dd");
+    dd.className = "mono";
+    dd.textContent = String(value);
+    dl.append(dt, dd);
+  }
+}
+
+function renderState(summary) {
+  state.status = summary.status;
+  $("side-title").textContent = summary.runId;
+  const pill = $("side-status");
+  pill.className = `pill ${statusTone(summary)}`;
+  pill.textContent = statusLabel(summary);
+  $("stop").disabled = !(summary.status === "running" || summary.status === "starting");
+
+  const link = $("operator-link");
+  if (summary.operatorUrl) {
+    link.hidden = false;
+    link.href = summary.operatorUrl;
+  } else {
+    link.hidden = true;
+  }
+
+  renderResult(summary);
+  if (summary.status !== "running" && summary.status !== "starting") {
+    // On a bad ending the tail of the timeline is rarely the interesting part; the step that
+    // actually broke is. Put it on screen instead of making the reader hunt for it.
+    const failure = $("timeline").querySelector(".ev.bad.hilite") ?? $("timeline").querySelector(".ev.bad");
+    if (failure) failure.scrollIntoView({ block: "center" });
+    stopFramePolling();
+    // One last pull so the panel shows the page the run ended on.
+    refreshFrame();
+    $("frame-note").hidden = false;
+    $("frame-note").textContent = "final frame";
+    void loadRuns();
+  }
+}
+
+// ---------------------------------------------------------------- live frame
+
+// Fetched rather than assigned to img.src so that a run with no frame yet (the browser is still
+// launching) is a quiet 404 instead of a failed resource load in the devtools console. This page
+// exists to make debugging easier; it must not add noise of its own.
+async function refreshFrame() {
+  if (!state.runId) return;
+  const runId = state.runId;
+  try {
+    const response = await fetch(`/api/runs/${runId}/frame?t=${Date.now()}`);
+    // 204 means the run has not painted a frame yet; keep showing whatever is already there.
+    if (response.status !== 200 || runId !== state.runId) return;
+    const objectUrl = URL.createObjectURL(await response.blob());
+    $("frame").src = objectUrl;
+    if (state.frameUrl) URL.revokeObjectURL(state.frameUrl);
+    state.frameUrl = objectUrl;
+  } catch {
+    // A dropped poll is not worth surfacing; the next tick retries.
+  }
+}
+
+function startFramePolling() {
+  stopFramePolling();
+  $("frame-note").hidden = false;
+  $("frame-note").textContent = "live";
+  state.frameTimer = setInterval(refreshFrame, 1000);
+  refreshFrame();
+}
+
+function stopFramePolling() {
+  if (state.frameTimer) clearInterval(state.frameTimer);
+  state.frameTimer = null;
+}
+
+// ---------------------------------------------------------------- attaching
+
+function attach(runId) {
+  state.stream?.close();
+  state.runId = runId;
+  $("timeline").innerHTML = "";
+  $("result").innerHTML = "";
+  $("frame").removeAttribute("src");
+  if (state.frameUrl) { URL.revokeObjectURL(state.frameUrl); state.frameUrl = null; }
+  startFramePolling();
+
+  const stream = new EventSource(`/api/runs/${runId}/stream`);
+  stream.addEventListener("run-event", (e) => appendEvent(JSON.parse(e.data)));
+  stream.addEventListener("run-state", (e) => renderState(JSON.parse(e.data)));
+  stream.onerror = () => {
+    // The server closes the stream when the process ends; a finished run needs no reconnect.
+    if (state.status === "finished" || state.status === "errored" || state.status === "stopped") stream.close();
+  };
+  state.stream = stream;
+  void loadRuns();
+}
+
+// ---------------------------------------------------------------- launcher
+
+function selectedCapability() {
+  return state.capabilities.find((c) => c.file === $("capability").value) ?? null;
+}
+
+function renderCapabilityMeta() {
+  const cap = selectedCapability();
+  const meta = $("capability-meta");
+  const inputs = $("inputs");
+  inputs.innerHTML = "";
+  if (!cap) { meta.textContent = "No capabilities found in capabilities/."; return; }
+
+  meta.innerHTML = `<div>${escapeHtml(cap.description)}</div><dl>
+    <dt>name</dt><dd class="mono">${escapeHtml(cap.name)} v${escapeHtml(cap.version)}</dd>
+    <dt>approval</dt><dd>${escapeHtml(cap.approval)}</dd>
+    <dt>steps</dt><dd>${cap.stepCount}${cap.hasIrreversibleStep ? " · contains an irreversible step" : ""}</dd>
+    <dt>outputs</dt><dd class="mono">${escapeHtml(cap.outputs.join(", ") || "—")}</dd>
+  </dl>`;
+
+  for (const spec of cap.inputs) {
+    const field = document.createElement("div");
+    field.className = "field";
+    const id = `input-${spec.name}`;
+    field.innerHTML = `<label for="${id}">${escapeHtml(spec.name)}${spec.required ? " *" : ""}${spec.description ? ` — ${escapeHtml(spec.description)}` : ""}</label>`;
+    const input = document.createElement("input");
+    input.id = id;
+    input.type = "text";
+    input.dataset.input = spec.name;
+    if (spec.example !== undefined) input.value = String(spec.example);
+    field.append(input);
+    inputs.append(field);
+  }
+
+  const tenant = $("tenant");
+  tenant.innerHTML = "";
+  for (const name of cap.tenants) {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    tenant.append(option);
+  }
+
+  $("operator-replay").checked = cap.hasIrreversibleStep;
+}
+
+function collectInputs() {
+  const values = {};
+  for (const input of document.querySelectorAll("#inputs [data-input]")) {
+    if (input.value !== "") values[input.dataset.input] = input.value;
+  }
+  return values;
+}
+
+function parsePairs(text) {
+  const values = {};
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const index = trimmed.indexOf("=");
+    if (index <= 0) continue;
+    values[trimmed.slice(0, index).trim()] = trimmed.slice(index + 1).trim();
+  }
+  return values;
+}
+
+async function startRun(body) {
+  $("message").textContent = "";
+  const response = await fetch("/api/runs", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    $("message").textContent = payload.error ?? `HTTP ${response.status}`;
+    return;
+  }
+  attach(payload.runId);
+}
+
+async function loadRuns() {
+  const runs = await fetch("/api/runs").then((r) => r.json());
+  const list = $("runs");
+  if (runs.length === 0) { list.innerHTML = '<p class="empty">No runs yet.</p>'; return; }
+  list.innerHTML = "";
+  for (const run of runs) {
+    const button = document.createElement("button");
+    button.className = `run-item${run.runId === state.runId ? " selected" : ""}`;
+    button.innerHTML = `<span class="pill ${statusTone(run)}">${statusLabel(run)}</span>
+      <div class="mono">${escapeHtml(run.kind === "discovery" ? run.goal ?? "discovery" : run.capabilityName ?? run.runId)}</div>
+      <div class="when">${escapeHtml(run.runId)} · ${new Date(run.startedAt).toLocaleTimeString()}${run.tenant ? ` · ${escapeHtml(run.tenant)}` : ""}${run.inject && run.inject !== "none" ? ` · inject ${escapeHtml(run.inject)}` : ""}</div>`;
+    button.addEventListener("click", () => attach(run.runId));
+    list.append(button);
+  }
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+
+function selectTab(which) {
+  const replay = which === "replay";
+  $("tab-replay").setAttribute("aria-selected", String(replay));
+  $("tab-discover").setAttribute("aria-selected", String(!replay));
+  $("panel-replay").hidden = !replay;
+  $("panel-discover").hidden = replay;
+}
+
+// ---------------------------------------------------------------- boot
+
+async function boot() {
+  state.config = await fetch("/api/config").then((r) => r.json());
+
+  const inject = $("inject");
+  for (const mode of state.config.injectionModes ?? ["none"]) {
+    const option = document.createElement("option");
+    option.value = mode;
+    option.textContent = mode;
+    inject.append(option);
+  }
+
+  $("entry-url").value = `${state.config.targetAppUrl}/t/alpha/msc/login`;
+  if (!state.config.discoveryAvailable) {
+    $("discover-warning").textContent = state.config.discoveryUnavailableReason;
+    for (const id of ["goal", "entry-url", "discover-inputs", "max-steps", "operator-discover", "run-discover"]) {
+      $(id).disabled = true;
+    }
+  }
+
+  state.capabilities = await fetch("/api/capabilities").then((r) => r.json());
+  const select = $("capability");
+  select.innerHTML = "";
+  for (const cap of state.capabilities) {
+    const option = document.createElement("option");
+    option.value = cap.file;
+    option.textContent = `${cap.title} (${cap.file})`;
+    select.append(option);
+  }
+  renderCapabilityMeta();
+  await loadRuns();
+
+  select.addEventListener("change", renderCapabilityMeta);
+  $("verbose").addEventListener("change", applyVerbose);
+  $("tab-replay").addEventListener("click", () => selectTab("replay"));
+  $("tab-discover").addEventListener("click", () => selectTab("discover"));
+
+  $("run-replay").addEventListener("click", () => {
+    const cap = selectedCapability();
+    if (!cap) return;
+    void startRun({
+      kind: "replay",
+      capabilityPath: cap.file,
+      inputs: collectInputs(),
+      tenant: $("tenant").value === "base" ? undefined : $("tenant").value,
+      // Always sent, so a sticky fault from a previous run is cleared rather than inherited.
+      inject: $("inject").value,
+      operator: $("operator-replay").checked,
+    });
+  });
+
+  $("run-discover").addEventListener("click", () => {
+    void startRun({
+      kind: "discovery",
+      goal: $("goal").value,
+      entryUrl: $("entry-url").value,
+      inputs: parsePairs($("discover-inputs").value),
+      maxSteps: Number($("max-steps").value),
+      operator: $("operator-discover").checked,
+    });
+  });
+
+  $("stop").addEventListener("click", async () => {
+    if (!state.runId) return;
+    $("stop").disabled = true;
+    await fetch(`/api/runs/${state.runId}/stop`, { method: "POST" });
+  });
+}
+
+void boot();
+</script>
+</body>
+</html>

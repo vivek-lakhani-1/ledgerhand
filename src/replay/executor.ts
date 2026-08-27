@@ -1015,7 +1015,17 @@ function updateStability(cap: Capability, result: ReplayResult, capabilityPath: 
   else if (result.status === "business_outcome") cap.stability.businessOutcomes += 1;
   else if (result.status === "failed" || result.status === "escalated") cap.stability.failures += 1;
   if (capabilityPath) {
-    fs.writeFileSync(capabilityPath, `${JSON.stringify(cap, null, 2)}\n`, "utf8");
+    // `cap` is the tenant-RESOLVED capability. Writing it back whole would bake that tenant's
+    // entry URL, labels and button names into the base artifact, so a single `--tenant beta`
+    // run would permanently convert the shared artifact into a beta-only one. Only the run
+    // counters belong on disk; everything else must survive untouched.
+    try {
+      const onDisk = JSON.parse(fs.readFileSync(capabilityPath, "utf8")) as Record<string, unknown>;
+      onDisk.stability = cap.stability;
+      fs.writeFileSync(capabilityPath, `${JSON.stringify(onDisk, null, 2)}\n`, "utf8");
+    } catch {
+      // Counters are bookkeeping; an unreadable artifact must not fail a run that already finished.
+    }
   }
   void startedAt;
 }
