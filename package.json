@@ -17,7 +17,8 @@
     "operator": "tsx src/cli/index.ts operator",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "dev:app": "tsx watch target-app/server.ts"
+    "dev:app": "tsx watch target-app/server.ts",
+    "dev:console": "tsx watch --clear-screen=false src/cli/index.ts console"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",
