@@ -5,111 +5,180 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ledgerhand Console</title>
   <style>
-    :root { color-scheme: dark; font: 14px/1.4 system-ui, sans-serif; }
-    body { margin: 0; background: #11151b; color: #e9eef5; }
-    main { display: grid; grid-template-columns: minmax(320px, 0.85fr) minmax(520px, 1.15fr); gap: 14px; height: 100vh; padding: 14px; box-sizing: border-box; }
-    section { background: #1a2029; border: 1px solid #303a47; border-radius: 8px; padding: 14px; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+    :root {
+      font: 14px/1.4 system-ui, sans-serif;
+      color-scheme: dark;
+      --bg: #11151b; --panel: #1a2029; --panel2: #12181f;
+      --border: #303a47; --border2: #3a4653;
+      --text: #e9eef5; --text-soft: #c3cede; --muted: #9baabd; --muted2: #8b98a9; --faint: #6d7a8b;
+      --label: #aebbd0; --pre-text: #b9c6d6;
+      --input-bg: #252e3a; --input-border: #445264;
+      --accent: #79b8ec; --accent-deep: #1f4a6d; --accent-border: #2f6d9e; --sel-border: #63b3ed;
+      --danger-bg: #4a2222; --danger-border: #7c3b3b;
+      --ok: #9bd18b; --ok-border: #3f6b36; --ok-bg: #17281a;
+      --bad: #e08a80; --bad-border: #7c3b3b; --bad-bg: #2b1818;
+      --warn: #f2c879; --warn-border: #7a5c26; --warn-bg: #2b2314;
+      --run-bg: #16293a; --idle-bg: #1e2530;
+      --item-bg: #222a35; --item-border: #394554; --item-sel: #26394d;
+      --frame-bg: #090b0e;
+      --ev-bg: #161c24; --ev-bad-bg: #211719; --ev-step-bg: #182029; --ev-model-bg: #1c1a26;
+      --chat-user: #202b3a; --chip-bg: #141922;
+      --kv: #8fb6d9;
+    }
+    body.light {
+      color-scheme: light;
+      --bg: #eef1f5; --panel: #ffffff; --panel2: #f5f7fa;
+      --border: #d5dce3; --border2: #c8d1da;
+      --text: #1e2937; --text-soft: #3b4c5e; --muted: #5c6c7e; --muted2: #71818f; --faint: #8b97a4;
+      --label: #5f7186; --pre-text: #46586c;
+      --input-bg: #ffffff; --input-border: #b8c3cf;
+      --accent: #1769aa; --accent-deep: #1d6fb8; --accent-border: #175a94; --sel-border: #1d6fb8;
+      --danger-bg: #f6dedc; --danger-border: #d09b94;
+      --ok: #2e6b2a; --ok-border: #93c48b; --ok-bg: #e8f4e5;
+      --bad: #a83a2e; --bad-border: #dda49c; --bad-bg: #fbecea;
+      --warn: #8a6116; --warn-border: #dcbb70; --warn-bg: #faf1dd;
+      --run-bg: #e1eefb; --idle-bg: #edf0f4;
+      --item-bg: #f2f5f8; --item-border: #ccd6df; --item-sel: #ddebf8;
+      --frame-bg: #d9dee5;
+      --ev-bg: #f4f6f9; --ev-bad-bg: #fbf0ef; --ev-step-bg: #eef4fa; --ev-model-bg: #f3f0fa;
+      --chat-user: #ddebf8; --chip-bg: #f0f4f8;
+      --kv: #2b6fa3;
+    }
+    body { margin: 0; background: var(--bg); color: var(--text); }
+    main { display: grid; grid-template-columns: minmax(300px, 360px) minmax(480px, 1fr) minmax(260px, 320px); gap: 14px; height: 100vh; padding: 14px; box-sizing: border-box; }
+    section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
     h1 { font-size: 17px; margin: 0 0 3px; }
-    h2 { font-size: 14px; margin: 14px 0 8px; }
-    h3 { font-size: 12px; margin: 0 0 6px; color: #aebbd0; text-transform: uppercase; letter-spacing: .06em; }
-    .lede { color: #9baabd; font-size: 12.5px; margin: 0 0 12px; }
+    h3 { font-size: 12px; margin: 0 0 6px; color: var(--label); text-transform: uppercase; letter-spacing: .06em; }
+    .lede { color: var(--muted); font-size: 12.5px; margin: 0 0 12px; }
     .scroll { overflow-y: auto; flex: 1; min-height: 0; }
-    label { display: block; font-size: 12px; color: #9baabd; margin: 0 0 4px; }
-    button, input, select, textarea { font: inherit; color: inherit; background: #252e3a; border: 1px solid #445264; border-radius: 4px; padding: 7px 9px; box-sizing: border-box; }
+    label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 4px; }
+    button, input, select, textarea { font: inherit; color: inherit; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 4px; padding: 7px 9px; box-sizing: border-box; }
     input, select, textarea { width: 100%; }
     textarea { resize: vertical; }
     button { cursor: pointer; width: auto; }
-    button:hover:not(:disabled) { border-color: #79b8ec; }
+    button:hover:not(:disabled) { border-color: var(--accent); }
     button:disabled, input:disabled, select:disabled, textarea:disabled { opacity: .45; cursor: not-allowed; }
-    button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid #79b8ec; outline-offset: 1px; }
-    .primary { background: #1f4a6d; border-color: #2f6d9e; font-weight: 600; }
-    .danger { background: #4a2222; border-color: #7c3b3b; }
+    button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .primary { background: var(--accent-deep); border-color: var(--accent-border); font-weight: 600; color: #fff; }
+    .danger { background: var(--danger-bg); border-color: var(--danger-border); }
     .field { margin-bottom: 10px; }
     .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .row > .field { flex: 1; margin-bottom: 0; }
-    .check { display: flex; gap: 7px; align-items: center; font-size: 12.5px; color: #c3cede; }
+    .check { display: flex; gap: 7px; align-items: center; font-size: 12.5px; color: var(--text-soft); }
     .check input { width: auto; }
-    a { color: #79b8ec; }
+    a { color: var(--accent); }
     code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    #theme-toggle { padding: 4px 10px; font-size: 12.5px; flex: none; }
 
-    .tabs { display: flex; gap: 6px; margin-bottom: 12px; border-bottom: 1px solid #303a47; }
-    .tab { background: none; border: none; border-bottom: 2px solid transparent; border-radius: 0; padding: 7px 11px; color: #9baabd; }
-    .tab[aria-selected="true"] { color: #e9eef5; border-bottom-color: #79b8ec; }
+    details.tool { border: 1px solid var(--border); border-radius: 8px; background: var(--panel2); margin-bottom: 7px; flex: none; }
+    details.tool > summary { cursor: pointer; padding: 9px 12px; list-style: none; display: flex; align-items: baseline; gap: 8px; }
+    details.tool > summary::-webkit-details-marker { display: none; }
+    details.tool > summary::before { content: "▸"; color: var(--faint); font-size: 11px; }
+    details.tool[open] > summary::before { content: "▾"; }
+    details.tool > summary .t-name { font-size: 13px; font-weight: 600; }
+    details.tool > summary .t-hint { font-size: 11px; color: var(--muted2); margin-left: auto; }
+    details.tool > .tool-body { padding: 10px 12px 12px; border-top: 1px solid var(--border); }
+    /* The column itself scrolls when expanded tools outgrow the viewport; the chat log
+       still takes the free space when everything is collapsed. */
+    #chat-col { overflow-y: auto; }
+    #tools-master > .tool-body { max-height: none; overflow: visible; padding: 8px; }
+    #tools-master details.tool { margin-bottom: 6px; background: var(--panel); }
+    #tools-master details.tool:last-child { margin-bottom: 0; }
 
-    .meta { background: #12181f; border: 1px solid #2b3540; border-radius: 5px; padding: 9px 10px; font-size: 12px; color: #c3cede; margin-bottom: 12px; }
+    .meta { background: var(--panel2); border: 1px solid var(--border); border-radius: 5px; padding: 9px 10px; font-size: 12px; color: var(--text-soft); margin-bottom: 12px; }
     .meta dl { display: grid; grid-template-columns: 84px 1fr; gap: 3px 9px; margin: 6px 0 0; }
-    .meta dt { color: #9baabd; } .meta dd { margin: 0; overflow-wrap: anywhere; }
-    .warn-chip { display: inline-block; background: #3a2c14; border: 1px solid #7a5c26; color: #f2c879; border-radius: 4px; padding: 5px 8px; font-size: 12px; margin-bottom: 10px; }
-
-    #runs { display: grid; gap: 5px; }
-    .run-item { width: 100%; text-align: left; padding: 7px 9px; background: #222a35; border: 1px solid #394554; border-radius: 5px; font-size: 12.5px; }
-    .run-item.selected { border-color: #63b3ed; background: #26394d; }
-    .run-item .when { color: #8b98a9; font-size: 11px; }
+    .meta dt { color: var(--muted); } .meta dd { margin: 0; overflow-wrap: anywhere; }
+    .warn-chip { display: inline-block; background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn); border-radius: 4px; padding: 5px 8px; font-size: 12px; margin-bottom: 10px; }
 
     .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: .03em; border: 1px solid; }
-    .pill.running { color: #79b8ec; border-color: #2f6d9e; background: #16293a; }
-    .pill.ok { color: #9bd18b; border-color: #3f6b36; background: #17281a; }
-    .pill.bad { color: #e08a80; border-color: #7c3b3b; background: #2b1818; }
-    .pill.warn { color: #f2c879; border-color: #7a5c26; background: #2b2314; }
-    .pill.idle { color: #9baabd; border-color: #445264; background: #1e2530; }
+    .pill.running { color: var(--accent); border-color: var(--accent-border); background: var(--run-bg); }
+    .pill.ok { color: var(--ok); border-color: var(--ok-border); background: var(--ok-bg); }
+    .pill.bad { color: var(--bad); border-color: var(--bad-border); background: var(--bad-bg); }
+    .pill.warn { color: var(--warn); border-color: var(--warn-border); background: var(--warn-bg); }
+    .pill.idle { color: var(--muted); border-color: var(--input-border); background: var(--idle-bg); }
 
     #side-head { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 10px; }
     #side-head h1 { margin: 0; }
-    #frame-wrap { position: relative; background: #090b0e; border: 1px solid #3a4653; border-radius: 5px; margin-bottom: 10px; flex: none; }
-    #frame { display: block; width: 100%; height: 34vh; object-fit: contain; }
-    #frame-note { position: absolute; right: 6px; bottom: 6px; background: #0009; padding: 2px 7px; border-radius: 3px; font-size: 11px; color: #c3cede; }
+    #frame-wrap { position: relative; background: var(--frame-bg); border: 1px solid var(--border2); border-radius: 5px; margin-bottom: 10px; flex: 1; min-height: 0; display: flex; }
+    #frame { display: block; width: 100%; height: 100%; object-fit: contain; }
+    #frame-note { position: absolute; right: 6px; bottom: 6px; background: #0009; padding: 2px 7px; border-radius: 3px; font-size: 11px; color: #e6e9ee; }
+    #frame-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--muted); padding: 24px; }
+    /* display:flex would otherwise defeat the hidden attribute and the overlay would never go away */
+    #frame-empty[hidden] { display: none; }
+    #frame-empty .inner { max-width: 380px; display: grid; gap: 8px; justify-items: center; }
+    #frame-empty .glyph { font-size: 34px; opacity: .7; }
+    #frame-empty .big { font-size: 15px; font-weight: 600; color: var(--text); }
 
     #timeline { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
-    .ev { border-left: 3px solid #3a4653; background: #161c24; border-radius: 0 4px 4px 0; }
+    .ev { border-left: 3px solid var(--border2); background: var(--ev-bg); border-radius: 0 4px 4px 0; }
     .ev summary { padding: 5px 9px; cursor: pointer; display: flex; gap: 8px; align-items: baseline; list-style: none; }
     .ev summary::-webkit-details-marker { display: none; }
-    .ev .seq { color: #6d7a8b; font-size: 11px; min-width: 26px; font-variant-numeric: tabular-nums; }
+    .ev .seq { color: var(--faint); font-size: 11px; min-width: 26px; font-variant-numeric: tabular-nums; }
     .ev .title { flex: 1; overflow-wrap: anywhere; }
-    .ev .sub { color: #9baabd; }
-    .ev pre { margin: 0; padding: 8px 10px 10px 40px; white-space: pre-wrap; overflow-wrap: anywhere; color: #b9c6d6; font-size: 11.5px; }
+    .ev .sub { color: var(--muted); }
+    .ev pre { margin: 0; padding: 8px 10px 10px 40px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--pre-text); font-size: 11.5px; }
     .ev.ok { border-left-color: #4e8b40; }
-    .ev.bad { border-left-color: #b8564a; background: #211719; }
+    .ev.bad { border-left-color: #b8564a; background: var(--ev-bad-bg); }
     .ev.warn { border-left-color: #a9822f; }
-    .ev.step { border-left-color: #4a7fb5; background: #182029; }
-    .ev.model { border-left-color: #8a6bb8; background: #1c1a26; }
+    .ev.step { border-left-color: #4a7fb5; background: var(--ev-step-bg); }
+    .ev.model { border-left-color: #8a6bb8; background: var(--ev-model-bg); }
     .ev.hilite { box-shadow: 0 0 0 1px #b8564a; }
-    .kv { color: #8fb6d9; }
+    .kv { color: var(--kv); }
 
-    #result { margin-top: 10px; flex: none; }
-    .result-box { border: 1px solid #3a4653; border-radius: 5px; padding: 11px; background: #12181f; font-size: 12.5px; }
-    .result-box.ok { border-color: #3f6b36; } .result-box.bad { border-color: #7c3b3b; } .result-box.warn { border-color: #7a5c26; }
+    #result { margin-top: 10px; flex: none; max-height: 36vh; overflow-y: auto; }
+    .result-box { border: 1px solid var(--border2); border-radius: 5px; padding: 11px; background: var(--panel2); font-size: 12.5px; }
+    .result-box.ok { border-color: var(--ok-border); } .result-box.bad { border-color: var(--bad-border); } .result-box.warn { border-color: var(--warn-border); }
     .result-box dl { display: grid; grid-template-columns: 106px 1fr; gap: 4px 10px; margin: 8px 0 0; }
-    .result-box dt { color: #9baabd; } .result-box dd { margin: 0; overflow-wrap: anywhere; }
-    .empty { color: #8b98a9; font-size: 12.5px; padding: 14px 0; }
-    #message { min-height: 18px; color: #f2c879; font-size: 12.5px; margin-top: 8px; }
-    .evidence { margin-top: 10px; border-top: 1px solid #303a47; padding-top: 8px; }
-    .evidence .ev-title { font-size: 12px; color: #9baabd; margin-bottom: 6px; }
+    .result-box dt { color: var(--muted); } .result-box dd { margin: 0; overflow-wrap: anywhere; }
+    .empty { color: var(--muted2); font-size: 12.5px; padding: 14px 0; }
+    #message { min-height: 18px; color: var(--warn); font-size: 12.5px; margin-top: 8px; }
+    .evidence { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
+    .evidence .ev-title { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
     .evidence .shots { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
-    .evidence .shots img { height: 64px; border: 1px solid #303a47; border-radius: 4px; }
+    .evidence .shots .shot { padding: 0; background: none; border: none; flex: none; }
+    .evidence .shots img { display: block; height: 64px; border: 1px solid var(--border); border-radius: 4px; }
+    .evidence .shots .shot:hover img, .evidence .shots .shot:focus-visible img { border-color: var(--accent); }
     .evidence .ev-links { font-size: 12px; margin-top: 6px; }
-    #chat-log { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; max-height: 44vh; overflow-y: auto; }
-    .chat-msg { border: 1px solid #303a47; border-radius: 8px; padding: 8px 10px; }
-    .chat-msg.user { background: #202b3a; }
-    .chat-msg .who { font-size: 11px; color: #9baabd; margin-bottom: 3px; }
-    .chat-msg .what { white-space: pre-wrap; }
-    .chat-run { display: block; margin-top: 6px; background: #141922; border: 1px solid #303a47; border-radius: 6px; padding: 4px 8px; font-size: 12px; text-align: left; }
-    @media (max-width: 900px) { main { grid-template-columns: 1fr; height: auto; } #frame { height: 42vh; } }
+
+    #chat-log { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; flex: 1; min-height: 120px; overflow-y: auto; }
+    .chat-msg { border: 1px solid var(--border); border-radius: 10px; padding: 8px 11px; max-width: 94%; }
+    .chat-msg.user { background: var(--chat-user); border-color: transparent; align-self: flex-end; }
+    .chat-msg.assistant { background: var(--panel2); align-self: flex-start; }
+    .chat-msg .who { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+    .chat-msg .what { overflow-wrap: anywhere; }
+    .chat-msg .what strong { font-weight: 700; }
+    .chat-run { display: block; margin-top: 6px; background: var(--chip-bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 12px; text-align: left; }
+    .quick-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+    .quick { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--chip-bg); border: 1px solid var(--accent-border); color: var(--accent); }
+    @media (max-width: 1100px) { main { grid-template-columns: 1fr; height: auto; } #frame-wrap { flex: none; min-height: 46vh; } #chat-log { max-height: 34vh; flex: none; } }
   </style>
 </head>
 <body>
 <main>
-  <section id="launcher">
-    <h1>Ledgerhand console</h1>
-    <p class="lede">Run a capability and watch it happen. Everything the run emits streams into the panel on the right.</p>
+  <section id="chat-col">
+    <div class="row" style="justify-content: space-between; margin-bottom: 3px;">
+      <h1 style="margin:0">Ledgerhand</h1>
+      <button id="theme-toggle" title="Switch between light and dark mode">☀ Light</button>
+    </div>
+    <p class="lede">Ask for a task in plain language. The assistant picks a capability and runs it — watch the live browser in the middle, the steps on the right.</p>
 
-    <div class="tabs" role="tablist">
-      <button class="tab" id="tab-replay" role="tab" aria-selected="true" aria-controls="panel-replay">Replay</button>
-      <button class="tab" id="tab-chat" role="tab" aria-selected="false" aria-controls="panel-chat">Chat</button>
-      <button class="tab" id="tab-discover" role="tab" aria-selected="false" aria-controls="panel-discover">Discover</button>
+    <div class="warn-chip" id="chat-warning" hidden></div>
+    <div id="chat-log"><p class="empty">Try: “check member 100987's balance” · “transfer $1 from 100987-S0001 to 100987-S0070” · “look up members named Lovelace”.</p></div>
+    <div class="field">
+      <textarea id="chat-input" rows="2" placeholder="What would you like done?"></textarea>
+    </div>
+    <div class="row" style="margin-bottom:12px">
+      <button class="primary" id="chat-send">Send</button>
+      <button id="chat-reset">New conversation</button>
     </div>
 
-    <div class="scroll">
-      <div id="panel-replay" role="tabpanel" aria-labelledby="tab-replay">
+    <details class="tool" id="tools-master">
+      <summary><span class="t-name">Tools</span><span class="t-hint">replay · discover</span></summary>
+      <div class="tool-body">
+
+    <details class="tool">
+      <summary><span class="t-name">Replay a capability</span><span class="t-hint">manual form</span></summary>
+      <div class="tool-body">
         <div class="field">
           <label for="capability">Capability</label>
           <select id="capability"><option>Loading…</option></select>
@@ -132,23 +201,15 @@
         </label>
         <button class="primary" id="run-replay">Run replay</button>
       </div>
+    </details>
 
-      <div id="panel-chat" role="tabpanel" aria-labelledby="tab-chat" hidden>
-        <div class="warn-chip" id="chat-warning" hidden></div>
-        <div id="chat-log"><p class="empty">Ask for a task in plain language — “check member 100234's balance”, “transfer $5 from 100987-S0001 to 100987-S0070”. The assistant picks a capability from the catalog and runs it; watch the run on the right.</p></div>
-        <div class="field">
-          <textarea id="chat-input" rows="2" placeholder="What would you like done?"></textarea>
-        </div>
-        <div class="row">
-          <button class="primary" id="chat-send">Send</button>
-          <button id="chat-reset">New conversation</button>
-        </div>
-      </div>
-
-      <div id="panel-discover" role="tabpanel" aria-labelledby="tab-discover" hidden>
+    <details class="tool">
+      <summary><span class="t-name">Discover</span><span class="t-hint">record a new capability</span></summary>
+      <div class="tool-body">
         <div class="warn-chip" id="discover-warning">
           Discovery drives the app with the model and spends API credits on every step. Use the step cap and Stop.
         </div>
+        <p class="lede">Each run writes a fresh <strong>draft</strong> artifact into <code>capabilities/</code> under its own run id — drafts are never callable until a human approves them. To re-record the same task cleanly, delete the old draft JSON from <code>capabilities/</code> first (its evidence stays in <code>evidence/runs/</code>).</p>
         <div class="field">
           <label for="goal">Goal</label>
           <textarea id="goal" rows="2" placeholder="Look up a member savings balance"></textarea>
@@ -156,6 +217,10 @@
         <div class="field">
           <label for="entry-url">Entry URL</label>
           <input id="entry-url" type="text" placeholder="http://127.0.0.1:4599/t/alpha/msc/login">
+        </div>
+        <div class="field">
+          <label for="discover-secrets">Credential env vars — which <code>.env</code> names hold this target's login (never type real passwords here)</label>
+          <input id="discover-secrets" type="text" value="APP_USER, APP_PASSWORD">
         </div>
         <div class="field">
           <label for="discover-inputs">Inputs — one <code>key=value</code> per line</label>
@@ -173,35 +238,46 @@
         </label>
         <button class="primary" id="run-discover">Run discovery</button>
       </div>
+    </details>
 
-      <div id="message" role="status"></div>
+      </div>
+    </details>
 
-      <h2>Recent runs</h2>
-      <div id="runs"><p class="empty">No runs yet.</p></div>
-    </div>
+    <div id="message" role="status"></div>
   </section>
 
-  <section id="side">
+  <section id="stage">
     <div id="side-head">
       <h1 id="side-title">Live run</h1>
       <span class="pill idle" id="side-status">idle</span>
       <span style="flex:1"></span>
       <a id="operator-link" href="#" target="_blank" rel="noopener" hidden>Operator console ↗</a>
-      <label class="check"><input type="checkbox" id="verbose" checked> Verbose</label>
       <button class="danger" id="stop" disabled>Stop</button>
     </div>
 
     <div id="frame-wrap">
-      <img id="frame" alt="Live view of the automated browser page">
+      <div id="frame-empty">
+        <div class="inner">
+          <div class="glyph">🖥️</div>
+          <div class="big" id="frame-empty-title">Nothing running yet</div>
+          <div id="frame-empty-text">Ask the assistant on the left, or pick a recent run — the automated browser shows up here live while it works.</div>
+        </div>
+      </div>
+      <img id="frame" alt="Live view of the automated browser page" hidden>
       <span id="frame-note" hidden></span>
     </div>
 
-    <h3>Timeline</h3>
+    <div id="result"></div>
+  </section>
+
+  <section id="steps-col">
+    <div class="row" style="margin-bottom:8px; justify-content: space-between;">
+      <h3 style="margin:0">Steps</h3>
+      <label class="check"><input type="checkbox" id="verbose"> Verbose</label>
+    </div>
     <div class="scroll" id="timeline-wrap">
       <div id="timeline"><p class="empty">Start a run to see what it does, step by step.</p></div>
     </div>
-
-    <div id="result"></div>
   </section>
 </main>
 
@@ -217,6 +293,9 @@ const state = {
   status: null,
   chatMessages: [],
   chatBusy: false,
+  autoAttached: null,
+  shots: [],
+  shotIndex: -1,
   // Event types that are mechanism rather than narrative; hidden unless Verbose is on.
   noisy: new Set(["policy.decision", "target.resolved", "action.performed"]),
 };
@@ -441,7 +520,6 @@ function renderState(summary) {
       $("frame-note").hidden = $("frame").hidden;
       $("frame-note").textContent = "final frame";
     });
-    void loadRuns();
   }
 }
 
@@ -458,6 +536,7 @@ async function refreshFrame() {
     // 204 means the run has not painted a frame yet; keep showing whatever is already there.
     if (response.status !== 200 || runId !== state.runId) return;
     const objectUrl = URL.createObjectURL(await response.blob());
+    $("frame-empty").hidden = true;
     $("frame").hidden = false;
     $("frame").src = objectUrl;
     if (state.frameUrl) URL.revokeObjectURL(state.frameUrl);
@@ -487,10 +566,14 @@ function attach(runId) {
   state.runId = runId;
   $("timeline").innerHTML = "";
   $("result").innerHTML = "";
+  state.shots = [];
+  state.shotIndex = -1;
   $("frame").removeAttribute("src");
   // Hidden until a frame actually arrives; a run with no screenshot (a stopped discovery, a
-  // history entry from before screenshots existed) should show nothing, not a broken image.
+  // history entry from before screenshots existed) should show the placeholder, not a broken image.
   $("frame").hidden = true;
+  // No placeholder chatter while a run is live — the stage stays dark until the first frame.
+  $("frame-empty").hidden = true;
   $("frame-note").hidden = true;
   if (state.frameUrl) { URL.revokeObjectURL(state.frameUrl); state.frameUrl = null; }
   void attachToRun(runId);
@@ -507,9 +590,14 @@ async function attachToRun(runId) {
   if (terminal) {
     for (const ev of run.events ?? []) appendEvent(ev);
     renderState(run);
-    refreshFrame();
+    void refreshFrame().then(() => {
+      if ($("frame").hidden) {
+        $("frame-empty").hidden = false;
+        $("frame-empty-title").textContent = "No screenshot for this run";
+        $("frame-empty-text").textContent = "This run ended without painting a frame — its story is in the steps and evidence.";
+      }
+    });
     void loadEvidence(runId);
-    void loadRuns();
     return;
   }
 
@@ -528,7 +616,6 @@ async function attachToRun(runId) {
     if (state.status === "finished" || state.status === "errored" || state.status === "stopped") stream.close();
   };
   state.stream = stream;
-  void loadRuns();
 }
 
 // ---------------------------------------------------------------- evidence
@@ -543,12 +630,17 @@ async function loadEvidence(runId) {
   const section = document.createElement("div");
   section.className = "evidence";
   const parts = [];
+  state.shots = evidence.screenshots.map((name) => ({
+    name,
+    url: `/api/runs/${runId}/evidence/screenshots/${encodeURIComponent(name)}`,
+  }));
+  state.shotIndex = -1;
   if (evidence.screenshots.length) {
-    parts.push(`<div class="ev-title">Evidence — ${evidence.screenshots.length} screenshots</div>
-      <div class="shots">${evidence.screenshots.map((name) =>
-        `<a href="/api/runs/${runId}/evidence/screenshots/${encodeURIComponent(name)}" target="_blank" rel="noopener" title="${escapeHtml(name)}">
-           <img loading="lazy" src="/api/runs/${runId}/evidence/screenshots/${encodeURIComponent(name)}" alt="${escapeHtml(name)}">
-         </a>`).join("")}</div>`);
+    parts.push(`<div class="ev-title">Evidence — ${evidence.screenshots.length} screenshots · click one to view it above, then browse with ← →</div>
+      <div class="shots">${state.shots.map((shot, index) =>
+        `<button class="shot" data-index="${index}" title="${escapeHtml(shot.name)}">
+           <img loading="lazy" src="${shot.url}" alt="${escapeHtml(shot.name)}">
+         </button>`).join("")}</div>`);
   }
   const links = [
     ...evidence.files.map((name) => `<a href="/api/runs/${runId}/evidence/${name}" target="_blank" rel="noopener">${escapeHtml(name)}</a>`),
@@ -559,6 +651,21 @@ async function loadEvidence(runId) {
   section.innerHTML = parts.join("");
   box.querySelector(".evidence")?.remove();
   box.append(section);
+  for (const button of section.querySelectorAll(".shot")) {
+    button.addEventListener("click", () => showShot(Number(button.dataset.index)));
+  }
+}
+
+// Show one evidence screenshot in the main frame; ← → step through the set.
+function showShot(index) {
+  if (state.shots.length === 0) return;
+  state.shotIndex = ((index % state.shots.length) + state.shots.length) % state.shots.length;
+  const shot = state.shots[state.shotIndex];
+  $("frame-empty").hidden = true;
+  $("frame").hidden = false;
+  $("frame").src = shot.url;
+  $("frame-note").hidden = false;
+  $("frame-note").textContent = `${shot.name} · ${state.shotIndex + 1}/${state.shots.length} · ← → to browse`;
 }
 
 // ---------------------------------------------------------------- launcher
@@ -642,41 +749,26 @@ async function startRun(body) {
   attach(payload.runId);
 }
 
-async function loadRuns() {
-  const runs = await fetch("/api/runs").then((r) => r.json());
-  const list = $("runs");
-  if (runs.length === 0) { list.innerHTML = '<p class="empty">No runs yet.</p>'; return; }
-  list.innerHTML = "";
-  for (const run of runs) {
-    const button = document.createElement("button");
-    button.className = `run-item${run.runId === state.runId ? " selected" : ""}`;
-    button.innerHTML = `<span class="pill ${statusTone(run)}">${statusLabel(run)}</span>
-      <div class="mono">${escapeHtml(run.kind === "discovery" ? run.goal ?? "discovery" : run.capabilityName ?? run.runId)}</div>
-      <div class="when">${escapeHtml(run.runId)} · ${new Date(run.startedAt).toLocaleTimeString()}${run.tenant ? ` · ${escapeHtml(run.tenant)}` : ""}${run.inject && run.inject !== "none" ? ` · inject ${escapeHtml(run.inject)}` : ""}</div>`;
-    button.addEventListener("click", () => attach(run.runId));
-    list.append(button);
-  }
-}
-
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 }
 
-function selectTab(which) {
-  for (const name of ["replay", "chat", "discover"]) {
-    $(`tab-${name}`).setAttribute("aria-selected", String(name === which));
-    $(`panel-${name}`).hidden = name !== which;
-  }
-}
-
 // ---------------------------------------------------------------- chat
+
+// Chat replies use light markdown (**bold**, `code`); render just that, after escaping.
+function renderInline(text) {
+  return escapeHtml(text)
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\n/g, "<br>");
+}
 
 function renderChatTurn(role, text, invocations = []) {
   const log = $("chat-log");
   log.querySelector(".empty")?.remove();
   const entry = document.createElement("div");
   entry.className = `chat-msg ${role}`;
-  entry.innerHTML = `<div class="who">${role === "user" ? "You" : "Assistant"}</div><div class="what">${escapeHtml(text)}</div>`;
+  entry.innerHTML = `<div class="who">${role === "user" ? "You" : "Assistant"}</div><div class="what">${renderInline(text)}</div>`;
   for (const invocation of invocations) {
     const chip = document.createElement("button");
     chip.className = "chat-run";
@@ -684,15 +776,59 @@ function renderChatTurn(role, text, invocations = []) {
     if (invocation.runId) chip.addEventListener("click", () => attach(invocation.runId));
     entry.append(chip);
   }
+  if (role === "assistant") appendQuickReplies(entry, text);
   log.append(entry);
   log.scrollTop = log.scrollHeight;
   return entry;
+}
+
+// When the assistant asks for a value it usually names the candidates (share IDs, reason
+// codes, branches). Surface them as one-tap chips that fill the input instead of retyping.
+function appendQuickReplies(entry, text) {
+  const found = [
+    ...(text.match(/\b\d{6}-[A-Z0-9][A-Z0-9-]*\b/gi) ?? []),
+    ...(text.match(/\b(FRAUD|LEGAL|DECEASED|MAIN-001|WEST-014|EAST-022)\b/g) ?? []),
+  ];
+  const options = [...new Set(found)].slice(0, 8);
+  if (options.length < 2) return;
+  const row = document.createElement("div");
+  row.className = "quick-row";
+  for (const option of options) {
+    const chip = document.createElement("button");
+    chip.className = "quick";
+    chip.textContent = option;
+    chip.addEventListener("click", () => {
+      const input = $("chat-input");
+      input.value = input.value ? `${input.value.replace(/\s+$/, "")} ${option}` : option;
+      input.focus();
+    });
+    row.append(chip);
+  }
+  entry.append(row);
 }
 
 function invocationTone(status) {
   if (status === "success" || status === "business_outcome") return "ok";
   if (status === "escalated") return "warn";
   return "bad";
+}
+
+// Any run started anywhere — the chat, the manual forms, another tab — should put itself on
+// stage. Poll cheaply for a live run and attach to it; when nothing is live, leave the
+// current view alone. This is also what clears the idle overlay the moment work begins.
+function startLiveWatch() {
+  setInterval(async () => {
+    try {
+      const runs = await fetch("/api/runs").then((r) => r.json());
+      const live = runs.find((r) => r.status === "running" || r.status === "starting");
+      // Each new run takes the stage exactly once, so browsing an old run's evidence is
+      // never yanked back to a run the viewer already saw arrive.
+      if (live && live.runId !== state.autoAttached) {
+        state.autoAttached = live.runId;
+        if (live.runId !== state.runId) attach(live.runId);
+      }
+    } catch { /* next tick retries */ }
+  }, 1500);
 }
 
 async function sendChat() {
@@ -703,7 +839,7 @@ async function sendChat() {
   $("chat-send").disabled = true;
   input.value = "";
   renderChatTurn("user", text);
-  const pending = renderChatTurn("assistant", "Working — invoked runs appear on the right…");
+  const pending = renderChatTurn("assistant", "Working — watch the live screen in the middle…");
   state.chatMessages.push({ role: "user", content: text });
   try {
     const response = await fetch("/api/chat", {
@@ -718,7 +854,6 @@ async function sendChat() {
     } else {
       state.chatMessages = payload.messages;
       renderChatTurn("assistant", payload.reply, payload.invocations);
-      await loadRuns();
     }
   } catch (error) {
     pending.remove();
@@ -731,7 +866,19 @@ async function sendChat() {
 
 // ---------------------------------------------------------------- boot
 
+function applyTheme(light) {
+  document.body.classList.toggle("light", light);
+  $("theme-toggle").textContent = light ? "☾ Dark" : "☀ Light";
+}
+
 async function boot() {
+  applyTheme(localStorage.getItem("lh-theme") !== "dark");
+  $("theme-toggle").addEventListener("click", () => {
+    const light = !document.body.classList.contains("light");
+    localStorage.setItem("lh-theme", light ? "light" : "dark");
+    applyTheme(light);
+  });
+
   state.config = await fetch("/api/config").then((r) => r.json());
 
   const inject = $("inject");
@@ -745,7 +892,7 @@ async function boot() {
   $("entry-url").value = `${state.config.targetAppUrl}/t/alpha/msc/login`;
   if (!state.config.discoveryAvailable) {
     $("discover-warning").textContent = state.config.discoveryUnavailableReason;
-    for (const id of ["goal", "entry-url", "discover-inputs", "max-steps", "operator-discover", "run-discover"]) {
+    for (const id of ["goal", "entry-url", "discover-secrets", "discover-inputs", "max-steps", "operator-discover", "run-discover"]) {
       $(id).disabled = true;
     }
   }
@@ -760,13 +907,16 @@ async function boot() {
     select.append(option);
   }
   renderCapabilityMeta();
-  await loadRuns();
+
+  // A refresh mid-run must not strand the stage on the idle overlay: reattach to
+  // whatever is currently running so the live view resumes immediately.
+  const bootRuns = await fetch("/api/runs").then((r) => r.json()).catch(() => []);
+  const live = bootRuns.find((r) => r.status === "running" || r.status === "starting");
+  if (live) { state.autoAttached = live.runId; attach(live.runId); }
+  startLiveWatch();
 
   select.addEventListener("change", renderCapabilityMeta);
   $("verbose").addEventListener("change", applyVerbose);
-  $("tab-replay").addEventListener("click", () => selectTab("replay"));
-  $("tab-chat").addEventListener("click", () => selectTab("chat"));
-  $("tab-discover").addEventListener("click", () => selectTab("discover"));
 
   if (!state.config.chatAvailable) {
     $("chat-warning").hidden = false;
@@ -800,6 +950,17 @@ async function boot() {
     });
   });
 
+  // The two known targets use different credential env vars; follow the entry URL so the
+  // operator doesn't have to remember which pair is which.
+  $("entry-url").addEventListener("change", () => {
+    const secrets = $("discover-secrets");
+    const untouched = secrets.value === "APP_USER, APP_PASSWORD" || secrets.value === "MERIDIAN_OPERATOR, MERIDIAN_PASSWORD";
+    if (!untouched) return;
+    secrets.value = $("entry-url").value.includes("interface-hiring.com")
+      ? "MERIDIAN_OPERATOR, MERIDIAN_PASSWORD"
+      : "APP_USER, APP_PASSWORD";
+  });
+
   $("run-discover").addEventListener("click", () => {
     void startRun({
       kind: "discovery",
@@ -808,6 +969,7 @@ async function boot() {
       inputs: parsePairs($("discover-inputs").value),
       maxSteps: Number($("max-steps").value),
       operator: $("operator-discover").checked,
+      secretNames: $("discover-secrets").value.split(",").map((name) => name.trim()).filter(Boolean),
     });
   });
 
@@ -815,6 +977,17 @@ async function boot() {
     if (!state.runId) return;
     $("stop").disabled = true;
     await fetch(`/api/runs/${state.runId}/stop`, { method: "POST" });
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    const tag = document.activeElement?.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    // Browsing evidence only makes sense once the run is over; never fight the live poller.
+    if (state.shots.length === 0 || state.frameTimer) return;
+    event.preventDefault();
+    const delta = event.key === "ArrowRight" ? 1 : -1;
+    showShot(state.shotIndex < 0 ? (delta === 1 ? 0 : state.shots.length - 1) : state.shotIndex + delta);
   });
 }
 
