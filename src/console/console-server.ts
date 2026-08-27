@@ -154,12 +154,17 @@ export function createConsoleApp(options: ConsoleServerOptions = {}): { app: Exp
         return;
       }
       const maxSteps = Number(req.body?.maxSteps ?? 25);
+      const secretNames = Array.isArray(req.body?.secretNames)
+        ? req.body.secretNames.filter((name: unknown): name is string =>
+            typeof name === "string" && /^[A-Z][A-Z0-9_]*$/.test(name))
+        : undefined;
       res.status(201).json(host.startDiscovery({
         goal,
         entryUrl,
         inputs,
         maxSteps: Number.isFinite(maxSteps) && maxSteps > 0 ? Math.min(Math.trunc(maxSteps), 60) : 25,
         operator,
+        secretNames: secretNames?.length ? secretNames : undefined,
       }));
       return;
     }

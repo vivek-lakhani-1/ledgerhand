@@ -2,17 +2,21 @@ export type DiscoveryPromptOptions = {
   goal: string;
   entryUrl: string;
   targetApp?: string;
+  /** Env-var names holding the operator credentials for this run. */
+  secretNames?: string[];
 };
 
 export function buildDiscoveryPrompt(options: DiscoveryPromptOptions): string {
   const targetApp = options.targetApp ?? "Meridian Member Services Console";
+  const secretNames = options.secretNames?.length ? options.secretNames : ["APP_USER", "APP_PASSWORD"];
+  const secretRefs = secretNames.map((name) => `{{secrets.${name}}}`).join(" and ");
   return [
     "You are recording a safe, reviewable capability for " + targetApp + ".",
     "",
     "Goal: " + options.goal,
     "Entry URL: " + options.entryUrl,
     "",
-    "Operator credentials are supplied as secrets. Reference them only as {{secrets.APP_USER}} and {{secrets.APP_PASSWORD}}. Never echo their values into a message, reason, summary, extracted output, or checkpoint.",
+    "Operator credentials are supplied as secrets. Reference them only as " + secretRefs + ". Never echo their values into a message, reason, summary, extracted output, or checkpoint.",
     "",
     "Call observe before acting. Choose controls by ref from the latest observation only; never author a CSS selector, XPath, coordinate, or other locator. Call declare_input before using {{inputs.x}}. After every meaningful state change, call assert_checkpoint for the visible evidence that proves it worked. When the goal is met, call finish with a concrete successCriterion that is true in the current page. If you are stuck or uncertain, call request_human_help rather than guessing.",
     "",

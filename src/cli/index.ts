@@ -40,6 +40,7 @@ type DiscoverCommandOptions = {
   operator?: boolean;
   maxSteps?: string;
   maxRisk?: string;
+  secret?: string[];
 };
 
 const program = new Command();
@@ -70,6 +71,7 @@ program
   .option("--operator", "start an operator console while discovery runs")
   .option("--max-steps <count>", "maximum model tool calls", "25")
   .option("--max-risk <risk>", "highest action risk discovery may perform: safe, sensitive or irreversible", "safe")
+  .option("--secret <envVar>", "env var holding a credential for this target; repeatable (default APP_USER, APP_PASSWORD)", collect, [])
   .action(async (options: DiscoverCommandOptions) => {
     loadEnvFile();
     const inputs = parsePairs(options.input ?? []);
@@ -105,6 +107,7 @@ program
         evidence,
         model: new AnthropicModelClient(),
         maxSteps: Number(options.maxSteps ?? "25"),
+        secretNames: options.secret?.length ? options.secret : undefined,
       });
       if (discovery.status !== "completed" || !discovery.finish) {
         console.log(`[ledgerhand] discovery ${discovery.status}: ${discovery.reason ?? "no completed capability"}`);
@@ -123,6 +126,7 @@ program
         model: "claude-opus-5",
         surfaceSignature: { browser: "chromium", surface: surface.kind },
         logger,
+        secretNames: options.secret?.length ? options.secret : undefined,
       });
       const destination = writeCapability(capability, process.cwd());
       console.log(`[ledgerhand] discovery completed; wrote ${destination}`);
@@ -361,7 +365,10 @@ function parseJsonObject(value: string): Record<string, unknown> {
 }
 
 function secretValues(): string[] {
-  return [process.env.APP_USER, process.env.APP_PASSWORD, process.env.ANTHROPIC_API_KEY, process.env.ANTHROPIC_AUTH_TOKEN]
+  const credentialKeys = Object.keys(process.env).filter((key) =>
+    /^(APP_|MERIDIAN_)/.test(key) || key === "ANTHROPIC_API_KEY" || key === "ANTHROPIC_AUTH_TOKEN");
+  return credentialKeys
+    .map((key) => process.env[key])
     .filter((value): value is string => Boolean(value));
 }
 

@@ -34,6 +34,8 @@ export type DiscoveryRunRequest = {
   inputs: Record<string, unknown>;
   maxSteps?: number;
   operator?: boolean;
+  /** Env-var names holding the target's credentials; defaults to APP_USER/APP_PASSWORD. */
+  secretNames?: string[];
 };
 
 export type RunRequest = ReplayRunRequest | DiscoveryRunRequest;
@@ -353,12 +355,19 @@ export class RunHost {
         run.summary.status = "finished";
       }
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       if (run.stopRequested) {
         run.summary.status = "stopped";
         run.summary.error = "Stopped by operator";
         run.summary.exitCode = 2;
+      } else if (/has been closed/.test(message)) {
+        // The browser went away under the run without a stop request: the console was shut
+        // down or restarted mid-run. That is an interruption, not a defect in the run.
+        run.summary.status = "stopped";
+        run.summary.error = "The run's browser closed before it finished — the console was stopped or restarted mid-run";
+        run.summary.exitCode = 2;
       } else {
-        run.summary.error = error instanceof Error ? error.message : String(error);
+        run.summary.error = message;
         run.summary.status = "errored";
         run.summary.exitCode = 1;
       }
@@ -402,6 +411,7 @@ export class RunHost {
       evidence: context.evidence,
       model: this.modelClient(),
       maxSteps: request.maxSteps ?? 25,
+      secretNames: request.secretNames,
     });
 
     if (discovery.status !== "completed" || !discovery.finish) {
@@ -426,6 +436,7 @@ export class RunHost {
       model: "claude-opus-5",
       surfaceSignature: { browser: "chromium", surface: context.surface.kind },
       logger: context.logger,
+      secretNames: request.secretNames,
     });
     return {
       status: "completed",

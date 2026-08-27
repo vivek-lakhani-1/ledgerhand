@@ -54,6 +54,8 @@ export type DiscoveryOptions = {
   evidence: EvidenceDir;
   model: ModelClient;
   maxSteps?: number;
+  /** Env-var names holding this target's credentials; defaults to the local app's pair. */
+  secretNames?: string[];
 };
 
 type RefCaptureSurface = Surface & {
@@ -97,7 +99,8 @@ export async function runDiscovery(options: DiscoveryOptions): Promise<Discovery
   let finish: DiscoveryFinish | undefined;
   let result: DiscoveryResult | undefined;
 
-  for (const key of ["APP_USER", "APP_PASSWORD"]) {
+  const secretNames = options.secretNames?.length ? options.secretNames : ["APP_USER", "APP_PASSWORD"];
+  for (const key of secretNames) {
     const value = process.env[key];
     if (!value) continue;
     redactor.registerSecret(value);
@@ -164,7 +167,7 @@ export async function runDiscovery(options: DiscoveryOptions): Promise<Discovery
       let response: Awaited<ReturnType<ModelClient["next"]>>;
       try {
         response = await options.model.next({
-          system: buildDiscoveryPrompt({ goal: options.goal, entryUrl: options.entryUrl }),
+          system: buildDiscoveryPrompt({ goal: options.goal, entryUrl: options.entryUrl, secretNames }),
           messages,
           tools: discoveryTools,
         });

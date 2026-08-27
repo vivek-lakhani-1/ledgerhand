@@ -40,6 +40,8 @@ export type RecorderOptions = {
   outputs?: readonly OutputSpec[];
   logger?: Pick<RunLogger, "emit">;
   substitutionLog?: string[];
+  /** Env-var names the run's credentials came from; declared on the artifact and used by the re-sign-on recovery. */
+  secretNames?: string[];
   onSubstitution?: (message: string) => void;
 };
 
@@ -190,10 +192,10 @@ export function recordCapability(options: RecorderOptions): CapabilityValue {
     },
     inputs,
     outputs: outputSpecs,
-    secretsRequired: ["APP_USER", "APP_PASSWORD"],
+    secretsRequired: options.secretNames?.length ? options.secretNames : ["APP_USER", "APP_PASSWORD"],
     steps,
     outcomes,
-    recoveries: defaultRecoveries(options.entryUrl),
+    recoveries: defaultRecoveries(options.entryUrl, options.secretNames),
     successCheckpoint,
     policy: {
       allowedOrigins: policyConfig?.allowedOrigins?.length ? policyConfig.allowedOrigins : [origin],
@@ -321,7 +323,8 @@ function defaultOutcomes(outputs: OutputSpec[]): Array<{
   ];
 }
 
-function defaultRecoveries(entryUrl: string): RecoveryRule[] {
+function defaultRecoveries(entryUrl: string, secretNames?: string[]): RecoveryRule[] {
+  const [userSecret = "APP_USER", passwordSecret = "APP_PASSWORD"] = secretNames ?? [];
   const continueTarget = TargetDescriptorSchema.parse({
     role: "button",
     name: "Continue",
@@ -356,8 +359,8 @@ function defaultRecoveries(entryUrl: string): RecoveryRule[] {
       when: { kind: "text_present", text: "Your session has expired", match: "contains" },
       do: [
         { type: "navigate", url: entryUrl },
-        { type: "type", target: userTarget, value: "{{secrets.APP_USER}}", clearFirst: true },
-        { type: "type", target: passwordTarget, value: "{{secrets.APP_PASSWORD}}", clearFirst: true },
+        { type: "type", target: userTarget, value: `{{secrets.${userSecret}}}`, clearFirst: true },
+        { type: "type", target: passwordTarget, value: `{{secrets.${passwordSecret}}}`, clearFirst: true },
         { type: "click", target: signOnTarget },
       ],
       maxAttempts: 1,
