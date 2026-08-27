@@ -1,0 +1,509 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "cap_meridian_member_balance",
+  "name": "meridian.member.balance",
+  "title": "Read a member's shares and balances",
+  "version": "1.0.0",
+  "description": "Signs on to Meridian Core, opens the member record by member number, and reads the member's name, e-mail, and primary share balance and status.",
+  "approval": "approved",
+  "target": {
+    "surface": "legacy-web",
+    "app": "meridian-core",
+    "appVersion": "4.2.1",
+    "tenant": null,
+    "entryUrl": "https://web-sample.interface-hiring.com/signon",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    }
+  },
+  "inputs": [
+    {
+      "name": "memberNumber",
+      "type": "string",
+      "required": true,
+      "description": "The six-digit member number to look up.",
+      "pattern": "^[0-9]{6}$",
+      "sensitivity": "pii",
+      "example": "100234"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "memberName",
+      "type": "string",
+      "description": "The member's name as shown on the member record.",
+      "required": true,
+      "sensitivity": "pii",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "td:text-is(\"Name:\") + td",
+              "confidence": 0.9,
+              "origin": "derived"
+            }
+          ],
+          "description": "Value cell to the right of the Name: label"
+        },
+        "transform": "trim"
+      }
+    },
+    {
+      "name": "primaryShareId",
+      "type": "string",
+      "description": "Share ID of the first share listed on the member record.",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "framePath": [],
+          "scope": {
+            "nth": 0
+          },
+          "strategies": [
+            {
+              "kind": "table_cell",
+              "rowMatch": "$",
+              "columnHeader": "Share ID",
+              "confidence": 0.85,
+              "origin": "derived"
+            }
+          ],
+          "description": "Share ID cell of the first share row"
+        },
+        "transform": "trim"
+      }
+    },
+    {
+      "name": "primaryShareBalance",
+      "type": "currency",
+      "description": "Balance of the first share listed on the member record.",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "framePath": [],
+          "scope": {
+            "nth": 0
+          },
+          "strategies": [
+            {
+              "kind": "table_cell",
+              "rowMatch": "$",
+              "columnHeader": "Balance",
+              "confidence": 0.85,
+              "origin": "derived"
+            }
+          ],
+          "description": "Balance cell of the first share row"
+        },
+        "transform": "currency_to_number"
+      }
+    },
+    {
+      "name": "primaryShareStatus",
+      "type": "string",
+      "description": "Status of the first share listed on the member record, such as OPEN or HOLD.",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "framePath": [],
+          "scope": {
+            "nth": 0
+          },
+          "strategies": [
+            {
+              "kind": "table_cell",
+              "rowMatch": "$",
+              "columnHeader": "Status",
+              "confidence": 0.85,
+              "origin": "derived"
+            }
+          ],
+          "description": "Status cell of the first share row"
+        },
+        "transform": "trim"
+      }
+    }
+  ],
+  "secretsRequired": [
+    "MERIDIAN_OPERATOR",
+    "MERIDIAN_PASSWORD"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "description": "Enter the operator ID",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "operator",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Operator ID field"
+        },
+        "value": "{{secrets.MERIDIAN_OPERATOR}}",
+        "clearFirst": true
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "password",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Operator password field"
+        }
+      }
+    },
+    {
+      "id": "s2",
+      "description": "Enter the operator password",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "password",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Operator password field"
+        },
+        "value": "{{secrets.MERIDIAN_PASSWORD}}",
+        "clearFirst": true
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "button",
+          "name": "Sign On",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Sign On",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
+          ],
+          "description": "Sign On button"
+        }
+      }
+    },
+    {
+      "id": "s3",
+      "description": "Sign on to the console",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Sign On",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Sign On",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
+          ],
+          "description": "Sign On button"
+        }
+      },
+      "retries": {
+        "max": 1,
+        "backoffMs": 500
+      },
+      "postcondition": {
+        "kind": "text_present",
+        "text": "MAIN MENU",
+        "match": "contains",
+        "framePath": []
+      }
+    },
+    {
+      "id": "s4",
+      "description": "Open the member record",
+      "action": {
+        "type": "navigate",
+        "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}"
+      },
+      "retries": {
+        "max": 1,
+        "backoffMs": 500
+      },
+      "postcondition": {
+        "kind": "text_present",
+        "text": "MEMBER RECORD",
+        "match": "contains",
+        "framePath": [],
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "id": "s5",
+      "description": "Read the member's shares and balances",
+      "action": {
+        "type": "extract",
+        "outputs": [
+          "memberName",
+          "primaryShareId",
+          "primaryShareBalance",
+          "primaryShareStatus"
+        ]
+      }
+    }
+  ],
+  "outcomes": [
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "description": "No member record exists for the requested member number.",
+      "detect": {
+        "kind": "text_present",
+        "text": "RECORD NOT FOUND",
+        "match": "contains",
+        "framePath": []
+      },
+      "terminal": true,
+      "outputs": []
+    }
+  ],
+  "recoveries": [
+    {
+      "id": "dismiss_maintenance",
+      "description": "Dismiss the maintenance interstitial and return to the member record.",
+      "when": {
+        "kind": "text_present",
+        "text": "SCHEDULED MAINTENANCE IN PROGRESS",
+        "match": "contains",
+        "framePath": []
+      },
+      "do": [
+        {
+          "type": "click",
+          "target": {
+            "role": "link",
+            "name": "Continue",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "aria",
+                "role": "link",
+                "name": "Continue",
+                "exact": true,
+                "confidence": 0.99,
+                "origin": "captured"
+              }
+            ],
+            "description": "Continue past the maintenance notice"
+          }
+        },
+        {
+          "type": "navigate",
+          "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}"
+        }
+      ],
+      "maxAttempts": 3,
+      "thenRetryStep": true
+    },
+    {
+      "id": "reauthenticate",
+      "description": "Sign back on after an idle session timeout and return to the member record.",
+      "when": {
+        "kind": "text_present",
+        "text": "YOUR SESSION HAS TIMED OUT",
+        "match": "contains",
+        "framePath": []
+      },
+      "do": [
+        {
+          "type": "navigate",
+          "url": "https://web-sample.interface-hiring.com/signon"
+        },
+        {
+          "type": "type",
+          "target": {
+            "role": "textbox",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "attribute",
+                "attr": "name",
+                "value": "operator",
+                "confidence": 0.98,
+                "origin": "captured"
+              }
+            ],
+            "description": "Operator ID field"
+          },
+          "value": "{{secrets.MERIDIAN_OPERATOR}}",
+          "clearFirst": true
+        },
+        {
+          "type": "type",
+          "target": {
+            "role": "textbox",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "attribute",
+                "attr": "name",
+                "value": "password",
+                "confidence": 0.98,
+                "origin": "captured"
+              }
+            ],
+            "description": "Operator password field"
+          },
+          "value": "{{secrets.MERIDIAN_PASSWORD}}",
+          "clearFirst": true
+        },
+        {
+          "type": "click",
+          "target": {
+            "role": "button",
+            "name": "Sign On",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "aria",
+                "role": "button",
+                "name": "Sign On",
+                "exact": true,
+                "confidence": 0.99,
+                "origin": "captured"
+              }
+            ],
+            "description": "Sign On button"
+          }
+        },
+        {
+          "type": "navigate",
+          "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}"
+        }
+      ],
+      "maxAttempts": 1,
+      "thenRetryStep": true
+    }
+  ],
+  "successCheckpoint": {
+    "kind": "text_present",
+    "text": "SHARES / BALANCES",
+    "match": "contains",
+    "framePath": []
+  },
+  "policy": {
+    "allowedOrigins": [
+      "https://web-sample.interface-hiring.com"
+    ],
+    "allowedPathPatterns": [
+      "/**"
+    ],
+    "allowedActions": [
+      "navigate",
+      "click",
+      "type",
+      "select",
+      "press",
+      "wait",
+      "extract",
+      "assert"
+    ],
+    "maxRisk": "safe",
+    "requireApprovalFor": [
+      "irreversible"
+    ],
+    "maxSteps": 20,
+    "timeoutMs": 120000
+  },
+  "provenance": {
+    "recordedAt": "2026-08-27T17:05:20.000Z",
+    "goal": "Sign on to Meridian Core as the operator, look up the member by member number, open the member record, and read the member's name and the balance of their Regular Shares (S0001) share",
+    "model": "claude-opus-5",
+    "discoveryRunId": "discover-26fe8cc8e560",
+    "surfaceSignature": {
+      "browser": "chromium",
+      "surface": "legacy-web"
+    },
+    "llmStepCount": 16
+  },
+  "stability": {
+    "runs": 14,
+    "successes": 8,
+    "businessOutcomes": 2,
+    "failures": 4,
+    "lastRunAt": "2026-08-27T17:58:46.301Z"
+  },
+  "tenantOverrides": {
+    "demo-maintenance": {
+      "note": "Demo variant: the member-record navigation forces a 503 maintenance interstitial so the dismiss_maintenance recovery can be shown deterministically.",
+      "steps": {
+        "s4": {
+          "action": {
+            "type": "navigate",
+            "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}?inject=maintenance"
+          }
+        }
+      }
+    },
+    "demo-timeout": {
+      "note": "Demo variant: the member-record navigation forces a 440 session timeout so the reauthenticate recovery can be shown deterministically.",
+      "steps": {
+        "s4": {
+          "action": {
+            "type": "navigate",
+            "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}?inject=timeout"
+          }
+        }
+      }
+    },
+    "demo-server-error": {
+      "note": "Demo variant: the member-record navigation forces a hard 500 application error, which is a hard failure rather than a recoverable condition.",
+      "steps": {
+        "s4": {
+          "action": {
+            "type": "navigate",
+            "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}?inject=server"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,277 @@
+[
+  {
+    "id": "iv_dd58c7ee44",
+    "createdAt": "2026-08-27T17:19:22.374Z",
+    "status": "resolved",
+    "origin": "replay",
+    "runId": "replay-52a787f222b8",
+    "capabilityId": "cap_meridian_account_hold",
+    "capabilityVersion": "1.0.0",
+    "goal": "Prepare an account hold in Meridian Core: sign on as the supervisor, open the member's Place Account Hold form, choose the share and reason code, enter notes, and continue to the confirmation review screen. Stop at the review screen; do not post the hold.",
+    "reason": {
+      "code": "RISKY_ACTION_APPROVAL",
+      "detail": "RISKY_ACTION_APPROVAL"
+    },
+    "atStepId": "s9",
+    "stepDescription": "Apply the reviewed hold",
+    "expected": "click Apply Hold button",
+    "observed": "Risk irreversible requires human approval",
+    "context": {
+      "url": "https://web-sample.interface-hiring.com/members/1****7/hold/review",
+      "title": "Confirm Account Hold - Meridian Core",
+      "screenshotPath": "evidence/runs/replay-52a787f222b8/screenshots/06-s9-escalation.png",
+      "snapshotPath": "evidence/runs/replay-52a787f222b8/dom/01-s9-escalation.html",
+      "recentEvents": [
+        {
+          "ts": "2026-08-27T17:19:18.441Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 41,
+          "type": "policy.decision",
+          "action": "select",
+          "decision": "allow",
+          "reason": "Action satisfies policy",
+          "resolvedUrl": "https://web-sample.interface-hiring.com/members/1****7/hold",
+          "approvalGranted": false
+        },
+        {
+          "ts": "2026-08-27T17:19:18.695Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 42,
+          "type": "target.resolved",
+          "action": "select",
+          "resolvedBy": "attribute",
+          "strategyIndex": 0,
+          "attempts": [
+            {
+              "strategy": "attribute",
+              "matchCount": 1
+            }
+          ],
+          "framePath": []
+        },
+        {
+          "ts": "2026-08-27T17:19:18.696Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 43,
+          "type": "action.performed",
+          "action": "select",
+          "strategy": "attribute",
+          "resolvedUrl": "https://web-sample.interface-hiring.com/members/1****7/hold"
+        },
+        {
+          "ts": "2026-08-27T17:19:19.790Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 44,
+          "type": "step.end",
+          "stepId": "s6",
+          "description": "Choose the hold reason code",
+          "action": "select",
+          "summary": "✓ action"
+        },
+        {
+          "ts": "2026-08-27T17:19:19.790Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 45,
+          "type": "step.start",
+          "stepId": "s7",
+          "description": "Enter the hold notes",
+          "attempt": 0
+        },
+        {
+          "ts": "2026-08-27T17:19:19.790Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 46,
+          "type": "policy.decision",
+          "action": "type",
+          "decision": "allow",
+          "reason": "Action satisfies policy",
+          "resolvedUrl": "https://web-sample.interface-hiring.com/members/1****7/hold",
+          "preflight": true
+        },
+        {
+          "ts": "2026-08-27T17:19:19.790Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 47,
+          "type": "policy.decision",
+          "action": "type",
+          "decision": "allow",
+          "reason": "Action satisfies policy",
+          "resolvedUrl": "https://web-sample.interface-hiring.com/members/1****7/hold",
+          "approvalGranted": false
+        },
+        {
+          "ts": "2026-08-27T17:19:19.793Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 48,
+          "type": "target.resolved",
+          "action": "type",
+          "resolvedBy": "attribute",
+          "strategyIndex": 0,
+          "attempts": [
+            {
+              "strategy": "attribute",
+              "matchCount": 1
+            }
+          ],
+          "framePath": []
+        },
+        {
+          "ts": "2026-08-27T17:19:19.793Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 49,
+          "type": "action.performed",
+          "action": "type",
+          "strategy": "attribute",
+          "resolvedUrl": "https://web-sample.interface-hiring.com/members/1****7/hold"
+        },
+        {
+          "ts": "2026-08-27T17:19:20.874Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 50,
+          "type": "step.end",
+          "stepId": "s7",
+          "description": "Enter the hold notes",
+          "action": "type",
+          "value": "approved-demo",
+          "summary": "✓ action"
+        },
+        {
+          "ts": "2026-08-27T17:19:20.874Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 51,
+          "type": "step.start",
+          "stepId": "s8",
+          "description": "Continue to the hold review screen",
+          "attempt": 0
+        },
+        {
+          "ts": "2026-08-27T17:19:20.874Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 52,
+          "type": "policy.decision",
+          "action": "click",
+          "decision": "allow",
+          "reason": "Action satisfies policy",
+          "resolvedUrl": "https://web-sample.interface-hiring.com/members/1****7/hold",
+          "preflight": true
+        },
+        {
+          "ts": "2026-08-27T17:19:20.874Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 53,
+          "type": "policy.decision",
+          "action": "click",
+          "decision": "allow",
+          "reason": "Action satisfies policy",
+          "resolvedUrl": "https://web-sample.interface-hiring.com/members/1****7/hold",
+          "approvalGranted": false
+        },
+        {
+          "ts": "2026-08-27T17:19:21.048Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 54,
+          "type": "target.resolved",
+          "action": "click",
+          "resolvedBy": "aria",
+          "strategyIndex": 0,
+          "attempts": [
+            {
+              "strategy": "aria",
+              "matchCount": 1
+            }
+          ],
+          "framePath": []
+        },
+        {
+          "ts": "2026-08-27T17:19:21.049Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 55,
+          "type": "action.performed",
+          "action": "click",
+          "strategy": "aria",
+          "resolvedUrl": "https://web-sample.interface-hiring.com/members/1****7/hold/review"
+        },
+        {
+          "ts": "2026-08-27T17:19:22.306Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 56,
+          "type": "checkpoint.evaluated",
+          "stepId": "s8",
+          "phase": "postcondition",
+          "kind": "text_present",
+          "ok": true,
+          "observed": "text \"CONFIRM ACCOUNT HOLD\" present in frame [main]"
+        },
+        {
+          "ts": "2026-08-27T17:19:22.331Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 57,
+          "type": "step.end",
+          "stepId": "s8",
+          "description": "Continue to the hold review screen",
+          "action": "click",
+          "summary": "✓ postcondition"
+        },
+        {
+          "ts": "2026-08-27T17:19:22.331Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 58,
+          "type": "step.start",
+          "stepId": "s9",
+          "description": "Apply the reviewed hold",
+          "attempt": 0
+        },
+        {
+          "ts": "2026-08-27T17:19:22.331Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 59,
+          "type": "policy.decision",
+          "action": "click",
+          "decision": "require_approval",
+          "reason": "Risk irreversible requires human approval",
+          "resolvedUrl": "https://web-sample.interface-hiring.com/members/1****7/hold/review",
+          "preflight": true
+        },
+        {
+          "ts": "2026-08-27T17:19:22.350Z",
+          "runId": "replay-52a787f222b8",
+          "seq": 60,
+          "type": "escalation.raised",
+          "stepId": "s9",
+          "reason": "RISKY_ACTION_APPROVAL",
+          "expected": "click Apply Hold button",
+          "observed": "Risk irreversible requires human approval",
+          "screenshotPath": "evidence/runs/replay-52a787f222b8/screenshots/06-s9-escalation.png",
+          "domPath": "evidence/runs/replay-52a787f222b8/dom/01-s9-escalation.html"
+        }
+      ]
+    },
+    "proposedAction": {
+      "type": "click",
+      "target": {
+        "role": "button",
+        "name": "Apply Hold",
+        "nameMatch": "exact",
+        "framePath": [],
+        "strategies": [
+          {
+            "kind": "aria",
+            "role": "button",
+            "name": "Apply Hold",
+            "exact": true,
+            "confidence": 0.99,
+            "origin": "captured"
+          }
+        ],
+        "description": "Apply Hold button"
+      }
+    },
+    "operatorUrl": "http://127.0.0.1:4610",
+    "humanActions": [],
+    "resolution": {
+      "at": "2026-08-27T17:19:50.795Z",
+      "note": "Supervisor approved the hold",
+      "decision": "approve"
+    }
+  }
+]

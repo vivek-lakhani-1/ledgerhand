@@ -1,0 +1,280 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "cap_meridian_signon",
+  "name": "meridian.signon",
+  "title": "Sign on to Meridian Core",
+  "version": "1.0.0",
+  "description": "Signs on to Meridian Core as the configured operator and confirms the main menu is available.",
+  "approval": "approved",
+  "target": {
+    "surface": "legacy-web",
+    "app": "meridian-core",
+    "appVersion": "4.2.1",
+    "tenant": null,
+    "entryUrl": "https://web-sample.interface-hiring.com/signon",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    }
+  },
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "sessionStatus",
+      "type": "string",
+      "description": "The operator and branch line from the console status bar.",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "td[bgcolor=\"#e4e4e4\"]",
+              "confidence": 0.85,
+              "origin": "derived"
+            }
+          ],
+          "description": "Console status bar"
+        },
+        "transform": "trim"
+      }
+    }
+  ],
+  "secretsRequired": [
+    "MERIDIAN_OPERATOR",
+    "MERIDIAN_PASSWORD"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "description": "Enter the operator ID",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "operator",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Operator ID field"
+        },
+        "value": "{{secrets.MERIDIAN_OPERATOR}}",
+        "clearFirst": true
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "password",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Operator password field"
+        }
+      }
+    },
+    {
+      "id": "s2",
+      "description": "Enter the operator password",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "password",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Operator password field"
+        },
+        "value": "{{secrets.MERIDIAN_PASSWORD}}",
+        "clearFirst": true
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "button",
+          "name": "Sign On",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Sign On",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
+          ],
+          "description": "Sign On button"
+        }
+      }
+    },
+    {
+      "id": "s3",
+      "description": "Sign on to the console",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Sign On",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Sign On",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
+          ],
+          "description": "Sign On button"
+        }
+      },
+      "retries": {
+        "max": 1,
+        "backoffMs": 500
+      },
+      "postcondition": {
+        "kind": "text_present",
+        "text": "MAIN MENU",
+        "match": "contains",
+        "framePath": []
+      }
+    },
+    {
+      "id": "s4",
+      "description": "Read the session status line",
+      "action": {
+        "type": "extract",
+        "outputs": [
+          "sessionStatus"
+        ]
+      }
+    }
+  ],
+  "outcomes": [
+    {
+      "code": "INVALID_CREDENTIALS",
+      "description": "The operator ID or password was rejected.",
+      "detect": {
+        "kind": "text_present",
+        "text": "Invalid operator ID or password",
+        "match": "contains",
+        "framePath": []
+      },
+      "terminal": true,
+      "outputs": []
+    }
+  ],
+  "recoveries": [
+    {
+      "id": "dismiss_maintenance",
+      "description": "Dismiss the maintenance interstitial and return to the interrupted screen.",
+      "when": {
+        "kind": "text_present",
+        "text": "SCHEDULED MAINTENANCE IN PROGRESS",
+        "match": "contains",
+        "framePath": []
+      },
+      "do": [
+        {
+          "type": "click",
+          "target": {
+            "role": "link",
+            "name": "Continue",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "aria",
+                "role": "link",
+                "name": "Continue",
+                "exact": true,
+                "confidence": 0.99,
+                "origin": "captured"
+              }
+            ],
+            "description": "Continue link"
+          }
+        },
+        {
+          "type": "navigate",
+          "url": "https://web-sample.interface-hiring.com/menu"
+        }
+      ],
+      "maxAttempts": 3,
+      "thenRetryStep": true
+    }
+  ],
+  "successCheckpoint": {
+    "kind": "text_present",
+    "text": "MAIN MENU",
+    "match": "contains",
+    "framePath": []
+  },
+  "policy": {
+    "allowedOrigins": [
+      "https://web-sample.interface-hiring.com"
+    ],
+    "allowedPathPatterns": [
+      "/**"
+    ],
+    "allowedActions": [
+      "navigate",
+      "click",
+      "type",
+      "select",
+      "press",
+      "wait",
+      "extract",
+      "assert"
+    ],
+    "maxRisk": "safe",
+    "requireApprovalFor": [
+      "irreversible"
+    ],
+    "maxSteps": 15,
+    "timeoutMs": 120000
+  },
+  "provenance": {
+    "recordedAt": "2026-08-27T18:00:00.000Z",
+    "goal": "Sign on to the Meridian Core console as the operator at branch MAIN-001 and confirm the main menu of functions is displayed",
+    "model": "claude-opus-5",
+    "discoveryRunId": "discover-35f1768a2001",
+    "surfaceSignature": {
+      "browser": "chromium",
+      "surface": "legacy-web"
+    },
+    "llmStepCount": 8
+  },
+  "stability": {
+    "runs": 1,
+    "successes": 1,
+    "businessOutcomes": 0,
+    "failures": 0,
+    "lastRunAt": "2026-08-27T17:56:28.469Z"
+  },
+  "tenantOverrides": {}
+}

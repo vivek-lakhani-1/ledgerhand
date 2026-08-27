@@ -1,0 +1,18 @@
+{
+  "status": "failed",
+  "runId": "replay-206703e9e1e9",
+  "capability": {
+    "id": "cap_meridian_member_balance",
+    "version": "1.0.0"
+  },
+  "error": {
+    "class": "SURFACE_ERROR",
+    "stepId": "s4",
+    "stepDescription": "Open the member record",
+    "expected": "the target application to return a usable page",
+    "observed": "HTTP 500 from https://web-sample.interface-hiring.com/members/1****7?inject=server — MERIDIAN CORE Member Services Platform v4.2.1 Cornerstone Financial Systems™\nMain Menu · Member Inquiry · System Settings · Sign Off\nAPPLICATION ERROR An unexpected error occurred while processing your request. Reference: ERR-2BEF5852 Please contact the Help Desk if the problem persists. Return to p",
+    "message": "Target application returned an application error page",
+    "recoveryAttempts": []
+  },
+  "evidenceDir": "evidence/runs/replay-206703e9e1e9"
+}

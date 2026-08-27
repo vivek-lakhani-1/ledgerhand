@@ -978,9 +978,13 @@ async function captureScreenshot(evidence: EvidenceDir, surface: Surface, label:
 
 async function captureDom(evidence: EvidenceDir, surface: Surface, label: string): Promise<string> {
   const destination = evidence.domPath(label);
+  // domPath is already rooted in the run directory; writeText roots relative paths there too,
+  // so handing it the full path would nest a second evidence/runs/<id> inside the first.
+  const relative = path.relative(evidence.runDir, destination);
   try {
-    evidence.writeText(destination, await surface.domSnapshot());
+    evidence.writeText(relative, await surface.domSnapshot());
   } catch {
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.writeFileSync(destination, "", "utf8");
   }
   return destination;

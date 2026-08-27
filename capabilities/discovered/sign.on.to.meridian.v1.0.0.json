@@ -1,0 +1,1008 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "cap_sign_on_to_meridian",
+  "name": "sign.on.to.meridian",
+  "title": "Sign On To Meridian",
+  "version": "1.0.0",
+  "description": "Sign on to Meridian Core as the operator, look up the member by member number, open the member record, and read the member's name and the balance of their Regular Shares (S0001) share",
+  "approval": "draft",
+  "target": {
+    "surface": "legacy-web",
+    "app": "meridian-msc",
+    "tenant": null,
+    "entryUrl": "https://web-sample.interface-hiring.com/signon",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    }
+  },
+  "inputs": [
+    {
+      "name": "memberNumber",
+      "type": "string",
+      "required": true,
+      "description": "The member number to look up in Member Inquiry",
+      "sensitivity": "pii",
+      "example": 100234
+    }
+  ],
+  "outputs": [
+    {
+      "name": "memberName",
+      "type": "string",
+      "description": "The member's name shown in the Name field of the member record",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "name": "Lovelace, Ada",
+          "nameMatch": "exact",
+          "framePath": [],
+          "scope": {
+            "withinRowMatching": "Member No.:",
+            "columnHeader": "Lovelace, Ada"
+          },
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "cell",
+              "name": "Lovelace, Ada",
+              "exact": true,
+              "confidence": 0.95,
+              "origin": "captured"
+            },
+            {
+              "kind": "table_cell",
+              "rowMatch": "Member No.:",
+              "columnHeader": "Lovelace, Ada",
+              "confidence": 0.85,
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "cell",
+              "index": 6,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(4)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "cell Lovelace, Ada"
+        },
+        "transform": "trim"
+      }
+    },
+    {
+      "name": "regularSharesS0001Balance",
+      "type": "currency",
+      "description": "Balance of the member's Regular Shares (S0001) share, from the Balance column of the S0001 row",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "name": "$2,499.00",
+          "nameMatch": "exact",
+          "framePath": [],
+          "scope": {
+            "withinRowMatching": "100234-S0001",
+            "columnHeader": "Balance"
+          },
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "cell",
+              "name": "$2,499.00",
+              "exact": true,
+              "confidence": 0.95,
+              "origin": "captured"
+            },
+            {
+              "kind": "table_cell",
+              "rowMatch": "100234-S0001",
+              "columnHeader": "Balance",
+              "confidence": 0.85,
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "cell",
+              "index": 19,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "table:nth-of-type(2) > tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(3)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "cell $2,499.00"
+        },
+        "transform": "trim"
+      }
+    },
+    {
+      "name": "validationMessage",
+      "type": "string",
+      "description": "The validation message returned by the target application.",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "generic",
+          "nameMatch": "exact",
+          "framePath": [
+            "content"
+          ],
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "body",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "Validation message text"
+        },
+        "transform": "trim"
+      }
+    }
+  ],
+  "secretsRequired": [
+    "APP_USER",
+    "APP_PASSWORD"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "description": "Enter the operator ID to sign on",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "nameMatch": "exact",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "operator",
+              "confidence": 0.7,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "type",
+              "value": "text",
+              "confidence": 0.6499999999999999,
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "textbox",
+              "index": 0,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "textbox near Operator ID:"
+        },
+        "value": "{{secrets.APP_USER}}",
+        "clearFirst": true
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "textbox",
+          "nameMatch": "exact",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "operator",
+              "confidence": 0.7,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "type",
+              "value": "text",
+              "confidence": 0.6499999999999999,
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "textbox",
+              "index": 0,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "textbox near Operator ID:"
+        },
+        "description": "the field that was filled is present"
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s2",
+      "description": "Enter the operator password to sign on",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "nameMatch": "exact",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "password",
+              "confidence": 0.7,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "type",
+              "value": "password",
+              "confidence": 0.6499999999999999,
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "textbox",
+              "index": 1,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "textbox near Password:"
+        },
+        "value": "{{secrets.APP_PASSWORD}}",
+        "clearFirst": true
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "textbox",
+          "nameMatch": "exact",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "password",
+              "confidence": 0.7,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "type",
+              "value": "password",
+              "confidence": 0.6499999999999999,
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "textbox",
+              "index": 1,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "textbox near Password:"
+        },
+        "description": "the field that was filled is present"
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s3",
+      "description": "Submit sign-on to reach the main menu",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Sign On",
+          "nameMatch": "exact",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Sign On",
+              "exact": true,
+              "confidence": 0.95,
+              "origin": "captured"
+            },
+            {
+              "kind": "text",
+              "text": "Sign On",
+              "exact": true,
+              "confidence": 0.8,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "value",
+              "value": "Sign On",
+              "confidence": 0.6499999999999999,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "type",
+              "value": "submit",
+              "confidence": 0.6499999999999999,
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "button",
+              "index": 0,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(4) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "button Sign On"
+        }
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "text_present",
+        "text": "MAIN MENU",
+        "match": "contains",
+        "framePath": []
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s4",
+      "description": "Open the Member Inquiry / Selection screen to look up a member",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "link",
+          "name": "Member Inquiry / Selection",
+          "nameMatch": "exact",
+          "framePath": [],
+          "scope": {
+            "withinRowMatching": "1.",
+            "columnHeader": "Member Inquiry / Selection"
+          },
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "link",
+              "name": "Member Inquiry / Selection",
+              "exact": true,
+              "confidence": 0.95,
+              "origin": "captured"
+            },
+            {
+              "kind": "table_cell",
+              "rowMatch": "1.",
+              "columnHeader": "Member Inquiry / Selection",
+              "confidence": 0.85,
+              "origin": "captured"
+            },
+            {
+              "kind": "text",
+              "text": "Member Inquiry / Selection",
+              "exact": true,
+              "confidence": 0.8,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "href",
+              "value": "/members",
+              "confidence": 0.6499999999999999,
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "link",
+              "index": 4,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(2) > a:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "link Member Inquiry / Selection"
+        }
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "text_present",
+        "text": "MEMBER INQUIRY / SELECTION",
+        "match": "contains",
+        "framePath": []
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s5",
+      "description": "Focus the Value textbox before typing the member number",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "textbox",
+          "nameMatch": "exact",
+          "framePath": [],
+          "scope": {
+            "withinRowMatching": "Value:",
+            "columnHeader": "Member Number Last Name"
+          },
+          "strategies": [
+            {
+              "kind": "table_cell",
+              "rowMatch": "Value:",
+              "columnHeader": "Member Number Last Name",
+              "confidence": 0.85,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "q",
+              "confidence": 0.7,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "type",
+              "value": "text",
+              "confidence": 0.6499999999999999,
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "textbox",
+              "index": 0,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "textbox near Value:"
+        }
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "text_present",
+        "text": "SHARES / BALANCES",
+        "match": "contains",
+        "framePath": []
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s6",
+      "description": "The Value textbox could not be filled via its ref; submit the member-number search through the same search screen's query",
+      "action": {
+        "type": "navigate",
+        "url": "https://web-sample.interface-hiring.com/members?by=number&q={{inputs.memberNumber}}"
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "text_present",
+        "text": "Member No.",
+        "match": "contains",
+        "framePath": []
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s7",
+      "description": "Open the member record from the search result",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "link",
+          "name": "Select",
+          "nameMatch": "exact",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "link",
+              "name": "Select",
+              "exact": true,
+              "confidence": 0.95,
+              "origin": "captured"
+            },
+            {
+              "kind": "text",
+              "text": "Select",
+              "exact": true,
+              "confidence": 0.8,
+              "origin": "captured"
+            },
+            {
+              "kind": "attribute",
+              "attr": "href",
+              "value": "/members/100234",
+              "confidence": 0.6499999999999999,
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "link",
+              "index": 4,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(4) > a:nth-of-type(1)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "link Select"
+        }
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "cell",
+          "name": "Lovelace, Ada",
+          "nameMatch": "exact",
+          "framePath": [],
+          "scope": {
+            "withinRowMatching": "Member No.:",
+            "columnHeader": "Lovelace, Ada"
+          },
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "cell",
+              "name": "Lovelace, Ada",
+              "exact": true,
+              "confidence": 0.95,
+              "origin": "captured"
+            },
+            {
+              "kind": "table_cell",
+              "rowMatch": "Member No.:",
+              "columnHeader": "Lovelace, Ada",
+              "confidence": 0.85,
+              "origin": "captured"
+            },
+            {
+              "kind": "nth_of_role",
+              "role": "cell",
+              "index": 6,
+              "confidence": 0.55,
+              "origin": "derived"
+            },
+            {
+              "kind": "css",
+              "selector": "table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(4)",
+              "confidence": 0.4,
+              "origin": "derived"
+            }
+          ],
+          "description": "cell Lovelace, Ada"
+        },
+        "description": "the page holding the extracted data has loaded"
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s8",
+      "description": "cell Lovelace, Ada",
+      "action": {
+        "type": "extract",
+        "outputs": [
+          "memberName"
+        ]
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    },
+    {
+      "id": "s9",
+      "description": "cell $2,499.00",
+      "action": {
+        "type": "extract",
+        "outputs": [
+          "regularSharesS0001Balance"
+        ]
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
+    }
+  ],
+  "outcomes": [
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "description": "No member record was found for the requested identifier.",
+      "detect": {
+        "kind": "text_present",
+        "text": "No member record found",
+        "match": "contains"
+      },
+      "terminal": true,
+      "outputs": []
+    },
+    {
+      "code": "PERMISSION_DENIED",
+      "description": "The operator is not authorized to view the requested account.",
+      "detect": {
+        "kind": "text_present",
+        "text": "not authorized to view",
+        "match": "contains"
+      },
+      "terminal": true,
+      "outputs": []
+    },
+    {
+      "code": "VALIDATION_ERROR",
+      "description": "The target application rejected an input value.",
+      "detect": {
+        "kind": "text_present",
+        "text": "must be at least",
+        "match": "contains"
+      },
+      "terminal": true,
+      "outputs": [
+        {
+          "name": "validationMessage",
+          "type": "string",
+          "description": "The validation message returned by the target application.",
+          "required": true,
+          "sensitivity": "public",
+          "source": {
+            "kind": "text_of",
+            "target": {
+              "role": "generic",
+              "nameMatch": "exact",
+              "framePath": [
+                "content"
+              ],
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "body",
+                  "confidence": 0.4,
+                  "origin": "derived"
+                }
+              ],
+              "description": "Validation message text"
+            },
+            "transform": "trim"
+          }
+        }
+      ]
+    }
+  ],
+  "recoveries": [
+    {
+      "id": "dismiss_interstitial",
+      "description": "Dismiss a system maintenance notice and retry the step.",
+      "when": {
+        "kind": "text_present",
+        "text": "SYSTEM MAINTENANCE NOTICE",
+        "match": "contains"
+      },
+      "do": [
+        {
+          "type": "click",
+          "target": {
+            "role": "button",
+            "name": "Continue",
+            "nameMatch": "exact",
+            "framePath": [
+              "content"
+            ],
+            "strategies": [
+              {
+                "kind": "aria",
+                "role": "button",
+                "name": "Continue",
+                "exact": true,
+                "confidence": 0.95,
+                "origin": "captured"
+              },
+              {
+                "kind": "text",
+                "text": "Continue",
+                "exact": true,
+                "confidence": 0.8,
+                "origin": "derived"
+              }
+            ],
+            "description": "Continue past the maintenance interstitial"
+          }
+        }
+      ],
+      "maxAttempts": 2,
+      "thenRetryStep": true
+    },
+    {
+      "id": "reauthenticate",
+      "description": "Return to the login page, reauthenticate, and retry the step.",
+      "when": {
+        "kind": "text_present",
+        "text": "Your session has expired",
+        "match": "contains"
+      },
+      "do": [
+        {
+          "type": "navigate",
+          "url": "https://web-sample.interface-hiring.com/signon"
+        },
+        {
+          "type": "type",
+          "target": {
+            "role": "textbox",
+            "nameMatch": "exact",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "attribute",
+                "attr": "name",
+                "value": "u",
+                "confidence": 0.7,
+                "origin": "captured"
+              }
+            ],
+            "description": "Operator ID login field"
+          },
+          "value": "{{secrets.APP_USER}}",
+          "clearFirst": true
+        },
+        {
+          "type": "type",
+          "target": {
+            "role": "textbox",
+            "nameMatch": "exact",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "attribute",
+                "attr": "name",
+                "value": "p",
+                "confidence": 0.7,
+                "origin": "captured"
+              }
+            ],
+            "description": "Password login field"
+          },
+          "value": "{{secrets.APP_PASSWORD}}",
+          "clearFirst": true
+        },
+        {
+          "type": "click",
+          "target": {
+            "role": "button",
+            "name": "Sign On",
+            "nameMatch": "exact",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "aria",
+                "role": "button",
+                "name": "Sign On",
+                "exact": true,
+                "confidence": 0.95,
+                "origin": "captured"
+              }
+            ],
+            "description": "Sign in to the operator console"
+          }
+        }
+      ],
+      "maxAttempts": 1,
+      "thenRetryStep": true
+    }
+  ],
+  "successCheckpoint": {
+    "kind": "control_present",
+    "target": {
+      "role": "cell",
+      "name": "Lovelace, Ada",
+      "nameMatch": "exact",
+      "framePath": [],
+      "scope": {
+        "withinRowMatching": "Member No.:",
+        "columnHeader": "Lovelace, Ada"
+      },
+      "strategies": [
+        {
+          "kind": "aria",
+          "role": "cell",
+          "name": "Lovelace, Ada",
+          "exact": true,
+          "confidence": 0.95,
+          "origin": "captured"
+        },
+        {
+          "kind": "table_cell",
+          "rowMatch": "Member No.:",
+          "columnHeader": "Lovelace, Ada",
+          "confidence": 0.85,
+          "origin": "captured"
+        },
+        {
+          "kind": "nth_of_role",
+          "role": "cell",
+          "index": 6,
+          "confidence": 0.55,
+          "origin": "derived"
+        },
+        {
+          "kind": "css",
+          "selector": "table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(4)",
+          "confidence": 0.4,
+          "origin": "derived"
+        }
+      ],
+      "description": "cell Lovelace, Ada"
+    },
+    "description": "the declared outputs are present and extractable"
+  },
+  "policy": {
+    "allowedOrigins": [
+      "https://web-sample.interface-hiring.com"
+    ],
+    "allowedPathPatterns": [
+      "/**"
+    ],
+    "allowedActions": [
+      "navigate",
+      "click",
+      "type",
+      "select",
+      "press",
+      "wait",
+      "extract",
+      "assert"
+    ],
+    "maxRisk": "safe",
+    "requireApprovalFor": [
+      "irreversible"
+    ],
+    "maxSteps": 60,
+    "timeoutMs": 120000
+  },
+  "provenance": {
+    "recordedAt": "2026-08-27T17:05:20.129Z",
+    "goal": "Sign on to Meridian Core as the operator, look up the member by member number, open the member record, and read the member's name and the balance of their Regular Shares (S0001) share",
+    "model": "claude-opus-5",
+    "discoveryRunId": "discover-26fe8cc8e560",
+    "surfaceSignature": {
+      "browser": "chromium",
+      "surface": "legacy-web"
+    },
+    "llmStepCount": 16
+  },
+  "stability": {
+    "runs": 1,
+    "successes": 0,
+    "businessOutcomes": 0,
+    "failures": 1,
+    "lastRunAt": "2026-08-27T17:06:31.178Z"
+  },
+  "tenantOverrides": {}
+}

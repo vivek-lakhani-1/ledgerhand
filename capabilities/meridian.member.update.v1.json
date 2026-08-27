@@ -1,0 +1,533 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "cap_meridian_member_update",
+  "name": "meridian.member.update",
+  "title": "Update a member's contact information",
+  "version": "1.0.0",
+  "description": "Signs on to Meridian Core and saves new e-mail, phone, and mailing address values on the member's record.",
+  "approval": "approved",
+  "target": {
+    "surface": "legacy-web",
+    "app": "meridian-core",
+    "appVersion": "4.2.1",
+    "tenant": null,
+    "entryUrl": "https://web-sample.interface-hiring.com/signon",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    }
+  },
+  "inputs": [
+    {
+      "name": "memberNumber",
+      "type": "string",
+      "required": true,
+      "description": "The six-digit member number to update.",
+      "pattern": "^[0-9]{6}$",
+      "sensitivity": "pii",
+      "example": "100234"
+    },
+    {
+      "name": "email",
+      "type": "string",
+      "required": true,
+      "description": "New e-mail address.",
+      "sensitivity": "pii",
+      "example": "member@example.com"
+    },
+    {
+      "name": "phone",
+      "type": "string",
+      "required": true,
+      "description": "New phone number.",
+      "sensitivity": "pii",
+      "example": "555-0142"
+    },
+    {
+      "name": "address",
+      "type": "string",
+      "required": true,
+      "description": "New mailing address.",
+      "sensitivity": "pii",
+      "example": "1 Harbor Lane, Arlington"
+    }
+  ],
+  "outputs": [],
+  "secretsRequired": [
+    "MERIDIAN_OPERATOR",
+    "MERIDIAN_PASSWORD"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "description": "Enter the operator ID",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "operator",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Operator ID field"
+        },
+        "value": "{{secrets.MERIDIAN_OPERATOR}}",
+        "clearFirst": true
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "password",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Operator password field"
+        }
+      }
+    },
+    {
+      "id": "s2",
+      "description": "Enter the operator password",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "password",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Operator password field"
+        },
+        "value": "{{secrets.MERIDIAN_PASSWORD}}",
+        "clearFirst": true
+      },
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "button",
+          "name": "Sign On",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Sign On",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
+          ],
+          "description": "Sign On button"
+        }
+      }
+    },
+    {
+      "id": "s3",
+      "description": "Sign on to the console",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Sign On",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Sign On",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
+          ],
+          "description": "Sign On button"
+        }
+      },
+      "retries": {
+        "max": 1,
+        "backoffMs": 500
+      },
+      "postcondition": {
+        "kind": "text_present",
+        "text": "MAIN MENU",
+        "match": "contains",
+        "framePath": []
+      }
+    },
+    {
+      "id": "s4",
+      "description": "Open the member's update form",
+      "action": {
+        "type": "navigate",
+        "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/update"
+      },
+      "retries": {
+        "max": 1,
+        "backoffMs": 500
+      },
+      "postcondition": {
+        "kind": "text_present",
+        "text": "UPDATE MEMBER INFORMATION",
+        "match": "contains",
+        "framePath": [],
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "id": "s5",
+      "description": "Enter the new e-mail address",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "email",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "E-mail field"
+        },
+        "value": "{{inputs.email}}",
+        "clearFirst": true
+      }
+    },
+    {
+      "id": "s6",
+      "description": "Enter the new phone number",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "phone",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Phone field"
+        },
+        "value": "{{inputs.phone}}",
+        "clearFirst": true
+      }
+    },
+    {
+      "id": "s7",
+      "description": "Enter the new mailing address",
+      "action": {
+        "type": "type",
+        "target": {
+          "role": "textbox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "address",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Mailing Address field"
+        },
+        "value": "{{inputs.address}}",
+        "clearFirst": true
+      }
+    },
+    {
+      "id": "s8",
+      "description": "Save the member information",
+      "action": {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Save Changes",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Save Changes",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
+          ],
+          "description": "Save Changes button"
+        }
+      },
+      "risk": "sensitive",
+      "retries": {
+        "max": 1,
+        "backoffMs": 500
+      },
+      "postcondition": {
+        "kind": "text_present",
+        "text": "CHANGES SAVED",
+        "match": "contains",
+        "framePath": [],
+        "timeoutMs": 8000
+      }
+    }
+  ],
+  "outcomes": [
+    {
+      "code": "VALIDATION_REJECTED",
+      "description": "The application rejected one or more of the new values.",
+      "detect": {
+        "kind": "text_present",
+        "text": "Please correct the following:",
+        "match": "contains",
+        "framePath": []
+      },
+      "terminal": true,
+      "outputs": [
+        {
+          "name": "validationMessage",
+          "type": "string",
+          "description": "The first validation problem reported by the application.",
+          "required": false,
+          "sensitivity": "public",
+          "source": {
+            "kind": "text_of",
+            "target": {
+              "role": "text",
+              "framePath": [],
+              "scope": {
+                "nth": 0
+              },
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "li",
+                  "confidence": 0.7,
+                  "origin": "derived"
+                }
+              ],
+              "description": "First validation message item"
+            },
+            "transform": "trim"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TRANSACTION_REJECTED",
+      "description": "The host rejected the transaction.",
+      "detect": {
+        "kind": "text_present",
+        "text": "TRANSACTION REJECTED",
+        "match": "contains",
+        "framePath": []
+      },
+      "terminal": true,
+      "outputs": []
+    },
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "description": "No member record exists for the requested member number.",
+      "detect": {
+        "kind": "text_present",
+        "text": "RECORD NOT FOUND",
+        "match": "contains",
+        "framePath": []
+      },
+      "terminal": true,
+      "outputs": []
+    }
+  ],
+  "recoveries": [
+    {
+      "id": "dismiss_maintenance",
+      "description": "Dismiss the maintenance interstitial and return to the interrupted screen.",
+      "when": {
+        "kind": "text_present",
+        "text": "SCHEDULED MAINTENANCE IN PROGRESS",
+        "match": "contains",
+        "framePath": []
+      },
+      "do": [
+        {
+          "type": "click",
+          "target": {
+            "role": "link",
+            "name": "Continue",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "aria",
+                "role": "link",
+                "name": "Continue",
+                "exact": true,
+                "confidence": 0.99,
+                "origin": "captured"
+              }
+            ],
+            "description": "Continue link"
+          }
+        },
+        {
+          "type": "navigate",
+          "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/update"
+        }
+      ],
+      "maxAttempts": 3,
+      "thenRetryStep": true
+    },
+    {
+      "id": "reauthenticate",
+      "description": "Sign back on after an idle session timeout and return to the interrupted screen.",
+      "when": {
+        "kind": "text_present",
+        "text": "YOUR SESSION HAS TIMED OUT",
+        "match": "contains",
+        "framePath": []
+      },
+      "do": [
+        {
+          "type": "navigate",
+          "url": "https://web-sample.interface-hiring.com/signon"
+        },
+        {
+          "type": "type",
+          "target": {
+            "role": "textbox",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "attribute",
+                "attr": "name",
+                "value": "operator",
+                "confidence": 0.98,
+                "origin": "captured"
+              }
+            ],
+            "description": "Operator ID field"
+          },
+          "value": "{{secrets.MERIDIAN_OPERATOR}}",
+          "clearFirst": true
+        },
+        {
+          "type": "type",
+          "target": {
+            "role": "textbox",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "attribute",
+                "attr": "name",
+                "value": "password",
+                "confidence": 0.98,
+                "origin": "captured"
+              }
+            ],
+            "description": "Operator password field"
+          },
+          "value": "{{secrets.MERIDIAN_PASSWORD}}",
+          "clearFirst": true
+        },
+        {
+          "type": "click",
+          "target": {
+            "role": "button",
+            "name": "Sign On",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "aria",
+                "role": "button",
+                "name": "Sign On",
+                "exact": true,
+                "confidence": 0.99,
+                "origin": "captured"
+              }
+            ],
+            "description": "Sign On button"
+          }
+        },
+        {
+          "type": "navigate",
+          "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/update"
+        }
+      ],
+      "maxAttempts": 1,
+      "thenRetryStep": true
+    }
+  ],
+  "successCheckpoint": {
+    "kind": "text_present",
+    "text": "CHANGES SAVED",
+    "match": "contains",
+    "framePath": []
+  },
+  "policy": {
+    "allowedOrigins": [
+      "https://web-sample.interface-hiring.com"
+    ],
+    "allowedPathPatterns": [
+      "/**"
+    ],
+    "allowedActions": [
+      "navigate",
+      "click",
+      "type",
+      "select",
+      "press",
+      "wait",
+      "extract",
+      "assert"
+    ],
+    "maxRisk": "sensitive",
+    "requireApprovalFor": [
+      "irreversible"
+    ],
+    "maxSteps": 25,
+    "timeoutMs": 120000
+  },
+  "provenance": {
+    "recordedAt": "2026-08-27T18:00:00.000Z",
+    "goal": "Fill the member information update form in Meridian Core: sign on, open the member's Update Member Information form, and enter the new e-mail, phone, and mailing address into the form fields. Stop there; do not save the changes.",
+    "model": "claude-opus-5-then-hand-curated",
+    "discoveryRunId": "discover-2c2b79d39580",
+    "surfaceSignature": {
+      "browser": "chromium",
+      "surface": "legacy-web"
+    },
+    "llmStepCount": 0
+  },
+  "stability": {
+    "runs": 2,
+    "successes": 1,
+    "businessOutcomes": 1,
+    "failures": 0,
+    "lastRunAt": "2026-08-27T17:56:07.811Z"
+  },
+  "tenantOverrides": {}
+}

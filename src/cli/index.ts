@@ -20,7 +20,7 @@ import { PolicyEngine } from "../policy/policy.js";
 import { Redactor } from "../policy/redact.js";
 import { replay } from "../replay/executor.js";
 import { BrowserSession } from "../session/session.js";
-import { Capability, type Capability as CapabilityValue, type ReplayResult } from "../schema/index.js";
+import { Capability, Risk, type Capability as CapabilityValue, type ReplayResult } from "../schema/index.js";
 import { lintCapability } from "../schema/lint.js";
 import { WebSurface } from "../surface/web/web-surface.js";
 import { withFramesetTextFallback } from "../surface/web/text-fallback.js";
@@ -39,6 +39,7 @@ type DiscoverCommandOptions = {
   input?: string[];
   operator?: boolean;
   maxSteps?: string;
+  maxRisk?: string;
 };
 
 const program = new Command();
@@ -68,6 +69,7 @@ program
   .option("--input <key=value>", "declared input value; repeatable", collect, [])
   .option("--operator", "start an operator console while discovery runs")
   .option("--max-steps <count>", "maximum model tool calls", "25")
+  .option("--max-risk <risk>", "highest action risk discovery may perform: safe, sensitive or irreversible", "safe")
   .action(async (options: DiscoverCommandOptions) => {
     loadEnvFile();
     const inputs = parsePairs(options.input ?? []);
@@ -76,7 +78,11 @@ program
     const logger = new RunLogger(runId, redactor);
     const evidence = new EvidenceDir(runId, redactor);
     const entryOrigin = new URL(options.url).origin;
-    const policy = new PolicyEngine({ allowedOrigins: [entryOrigin], allowedPathPatterns: ["/**"] }, { allowRisky: Boolean(options.operator) });
+    // Some targets name their navigation links after the transactions behind them ("Funds
+    // Transfer"), which the risk heuristic reads as the transaction itself. Raising maxRisk is
+    // an explicit operator decision per discovery run, never a default.
+    const maxRisk = Risk.parse(options.maxRisk ?? "safe");
+    const policy = new PolicyEngine({ allowedOrigins: [entryOrigin], allowedPathPatterns: ["/**"], maxRisk }, { allowRisky: Boolean(options.operator) });
     const session = await BrowserSession.launch({
       headless: true,
       viewport: { width: 1280, height: 900 },

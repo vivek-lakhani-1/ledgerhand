@@ -1,0 +1,15 @@
+{
+  "status": "success",
+  "runId": "replay-0e5e878c2d14",
+  "capability": {
+    "id": "cap_meridian_funds_transfer",
+    "version": "1.0.0"
+  },
+  "outputs": {
+    "confirmationNumber": "CN480040",
+    "postedAt": "08/27/2026 17:18:06"
+  },
+  "stepsExecuted": 10,
+  "durationMs": 18610,
+  "evidenceDir": "evidence/runs/replay-0e5e878c2d14"
+}

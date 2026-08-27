@@ -45,8 +45,10 @@ describe("agent-facing capability catalog", () => {
 
     const approvedTools = catalog.toToolSchemas();
     expect(approvedTools).toHaveLength(1);
+    // Dotted capability names are mapped to API-safe tool names; the Anthropic tool-name
+    // pattern has no dot in it.
     expect(approvedTools[0]).toMatchObject({
-      name: "member.savings_balance.lookup",
+      name: "member__savings_balance__lookup",
       input_schema: {
         type: "object",
         properties: { memberId: { type: "string", pattern: "^[0-9]{5}$" } },

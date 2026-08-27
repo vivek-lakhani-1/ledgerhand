@@ -82,6 +82,17 @@
     .result-box dt { color: #9baabd; } .result-box dd { margin: 0; overflow-wrap: anywhere; }
     .empty { color: #8b98a9; font-size: 12.5px; padding: 14px 0; }
     #message { min-height: 18px; color: #f2c879; font-size: 12.5px; margin-top: 8px; }
+    .evidence { margin-top: 10px; border-top: 1px solid #303a47; padding-top: 8px; }
+    .evidence .ev-title { font-size: 12px; color: #9baabd; margin-bottom: 6px; }
+    .evidence .shots { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+    .evidence .shots img { height: 64px; border: 1px solid #303a47; border-radius: 4px; }
+    .evidence .ev-links { font-size: 12px; margin-top: 6px; }
+    #chat-log { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; max-height: 44vh; overflow-y: auto; }
+    .chat-msg { border: 1px solid #303a47; border-radius: 8px; padding: 8px 10px; }
+    .chat-msg.user { background: #202b3a; }
+    .chat-msg .who { font-size: 11px; color: #9baabd; margin-bottom: 3px; }
+    .chat-msg .what { white-space: pre-wrap; }
+    .chat-run { display: block; margin-top: 6px; background: #141922; border: 1px solid #303a47; border-radius: 6px; padding: 4px 8px; font-size: 12px; text-align: left; }
     @media (max-width: 900px) { main { grid-template-columns: 1fr; height: auto; } #frame { height: 42vh; } }
   </style>
 </head>
@@ -93,6 +104,7 @@
 
     <div class="tabs" role="tablist">
       <button class="tab" id="tab-replay" role="tab" aria-selected="true" aria-controls="panel-replay">Replay</button>
+      <button class="tab" id="tab-chat" role="tab" aria-selected="false" aria-controls="panel-chat">Chat</button>
       <button class="tab" id="tab-discover" role="tab" aria-selected="false" aria-controls="panel-discover">Discover</button>
     </div>
 
@@ -119,6 +131,18 @@
           Start operator console (needed for irreversible steps)
         </label>
         <button class="primary" id="run-replay">Run replay</button>
+      </div>
+
+      <div id="panel-chat" role="tabpanel" aria-labelledby="tab-chat" hidden>
+        <div class="warn-chip" id="chat-warning" hidden></div>
+        <div id="chat-log"><p class="empty">Ask for a task in plain language — “check member 100234's balance”, “transfer $5 from 100987-S0001 to 100987-S0070”. The assistant picks a capability from the catalog and runs it; watch the run on the right.</p></div>
+        <div class="field">
+          <textarea id="chat-input" rows="2" placeholder="What would you like done?"></textarea>
+        </div>
+        <div class="row">
+          <button class="primary" id="chat-send">Send</button>
+          <button id="chat-reset">New conversation</button>
+        </div>
       </div>
 
       <div id="panel-discover" role="tabpanel" aria-labelledby="tab-discover" hidden>
@@ -191,6 +215,8 @@ const state = {
   frameTimer: null,
   frameUrl: null,
   status: null,
+  chatMessages: [],
+  chatBusy: false,
   // Event types that are mechanism rather than narrative; hidden unless Verbose is on.
   noisy: new Set(["policy.decision", "target.resolved", "action.performed"]),
 };
@@ -409,10 +435,12 @@ function renderState(summary) {
     const failure = $("timeline").querySelector(".ev.bad.hilite") ?? $("timeline").querySelector(".ev.bad");
     if (failure) failure.scrollIntoView({ block: "center" });
     stopFramePolling();
-    // One last pull so the panel shows the page the run ended on.
-    refreshFrame();
-    $("frame-note").hidden = false;
-    $("frame-note").textContent = "final frame";
+    // One last pull so the panel shows the page the run ended on; the label only appears if
+    // there was actually a frame to show.
+    void refreshFrame().then(() => {
+      $("frame-note").hidden = $("frame").hidden;
+      $("frame-note").textContent = "final frame";
+    });
     void loadRuns();
   }
 }
@@ -430,6 +458,7 @@ async function refreshFrame() {
     // 204 means the run has not painted a frame yet; keep showing whatever is already there.
     if (response.status !== 200 || runId !== state.runId) return;
     const objectUrl = URL.createObjectURL(await response.blob());
+    $("frame").hidden = false;
     $("frame").src = objectUrl;
     if (state.frameUrl) URL.revokeObjectURL(state.frameUrl);
     state.frameUrl = objectUrl;
@@ -459,18 +488,77 @@ function attach(runId) {
   $("timeline").innerHTML = "";
   $("result").innerHTML = "";
   $("frame").removeAttribute("src");
+  // Hidden until a frame actually arrives; a run with no screenshot (a stopped discovery, a
+  // history entry from before screenshots existed) should show nothing, not a broken image.
+  $("frame").hidden = true;
+  $("frame-note").hidden = true;
   if (state.frameUrl) { URL.revokeObjectURL(state.frameUrl); state.frameUrl = null; }
-  startFramePolling();
+  void attachToRun(runId);
+}
 
+async function attachToRun(runId) {
+  // Ask for the run first: a historical run rebuilt from evidence has its whole story on disk
+  // and no stream to subscribe to.
+  const response = await fetch(`/api/runs/${runId}`);
+  if (!response.ok) return;
+  const run = await response.json();
+  const terminal = run.status === "finished" || run.status === "errored" || run.status === "stopped";
+
+  if (terminal) {
+    for (const ev of run.events ?? []) appendEvent(ev);
+    renderState(run);
+    refreshFrame();
+    void loadEvidence(runId);
+    void loadRuns();
+    return;
+  }
+
+  startFramePolling();
   const stream = new EventSource(`/api/runs/${runId}/stream`);
   stream.addEventListener("run-event", (e) => appendEvent(JSON.parse(e.data)));
-  stream.addEventListener("run-state", (e) => renderState(JSON.parse(e.data)));
+  stream.addEventListener("run-state", (e) => {
+    const summary = JSON.parse(e.data);
+    renderState(summary);
+    if (summary.status === "finished" || summary.status === "errored" || summary.status === "stopped") {
+      void loadEvidence(runId);
+    }
+  });
   stream.onerror = () => {
     // The server closes the stream when the process ends; a finished run needs no reconnect.
     if (state.status === "finished" || state.status === "errored" || state.status === "stopped") stream.close();
   };
   state.stream = stream;
   void loadRuns();
+}
+
+// ---------------------------------------------------------------- evidence
+
+async function loadEvidence(runId) {
+  const response = await fetch(`/api/runs/${runId}/evidence`);
+  if (!response.ok || runId !== state.runId) return;
+  const evidence = await response.json();
+  const box = $("result");
+  if (!box.querySelector(".result-box")) return;
+
+  const section = document.createElement("div");
+  section.className = "evidence";
+  const parts = [];
+  if (evidence.screenshots.length) {
+    parts.push(`<div class="ev-title">Evidence — ${evidence.screenshots.length} screenshots</div>
+      <div class="shots">${evidence.screenshots.map((name) =>
+        `<a href="/api/runs/${runId}/evidence/screenshots/${encodeURIComponent(name)}" target="_blank" rel="noopener" title="${escapeHtml(name)}">
+           <img loading="lazy" src="/api/runs/${runId}/evidence/screenshots/${encodeURIComponent(name)}" alt="${escapeHtml(name)}">
+         </a>`).join("")}</div>`);
+  }
+  const links = [
+    ...evidence.files.map((name) => `<a href="/api/runs/${runId}/evidence/${name}" target="_blank" rel="noopener">${escapeHtml(name)}</a>`),
+    ...evidence.dom.map((name) => `<a href="/api/runs/${runId}/evidence/dom/${encodeURIComponent(name)}" target="_blank" rel="noopener">dom/${escapeHtml(name)}</a>`),
+  ];
+  if (links.length) parts.push(`<div class="ev-links">${links.join(" · ")}</div>`);
+  if (parts.length === 0) return;
+  section.innerHTML = parts.join("");
+  box.querySelector(".evidence")?.remove();
+  box.append(section);
 }
 
 // ---------------------------------------------------------------- launcher
@@ -575,11 +663,70 @@ function escapeHtml(value) {
 }
 
 function selectTab(which) {
-  const replay = which === "replay";
-  $("tab-replay").setAttribute("aria-selected", String(replay));
-  $("tab-discover").setAttribute("aria-selected", String(!replay));
-  $("panel-replay").hidden = !replay;
-  $("panel-discover").hidden = replay;
+  for (const name of ["replay", "chat", "discover"]) {
+    $(`tab-${name}`).setAttribute("aria-selected", String(name === which));
+    $(`panel-${name}`).hidden = name !== which;
+  }
+}
+
+// ---------------------------------------------------------------- chat
+
+function renderChatTurn(role, text, invocations = []) {
+  const log = $("chat-log");
+  log.querySelector(".empty")?.remove();
+  const entry = document.createElement("div");
+  entry.className = `chat-msg ${role}`;
+  entry.innerHTML = `<div class="who">${role === "user" ? "You" : "Assistant"}</div><div class="what">${escapeHtml(text)}</div>`;
+  for (const invocation of invocations) {
+    const chip = document.createElement("button");
+    chip.className = "chat-run";
+    chip.innerHTML = `<span class="pill ${invocationTone(invocation.status)}">${escapeHtml(invocation.status)}</span> ${escapeHtml(invocation.capability)} · ${escapeHtml(invocation.runId || "no run")}`;
+    if (invocation.runId) chip.addEventListener("click", () => attach(invocation.runId));
+    entry.append(chip);
+  }
+  log.append(entry);
+  log.scrollTop = log.scrollHeight;
+  return entry;
+}
+
+function invocationTone(status) {
+  if (status === "success" || status === "business_outcome") return "ok";
+  if (status === "escalated") return "warn";
+  return "bad";
+}
+
+async function sendChat() {
+  const input = $("chat-input");
+  const text = input.value.trim();
+  if (!text || state.chatBusy) return;
+  state.chatBusy = true;
+  $("chat-send").disabled = true;
+  input.value = "";
+  renderChatTurn("user", text);
+  const pending = renderChatTurn("assistant", "Working — invoked runs appear on the right…");
+  state.chatMessages.push({ role: "user", content: text });
+  try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ messages: state.chatMessages }),
+    });
+    const payload = await response.json();
+    pending.remove();
+    if (!response.ok) {
+      renderChatTurn("assistant", payload.error ?? `HTTP ${response.status}`);
+    } else {
+      state.chatMessages = payload.messages;
+      renderChatTurn("assistant", payload.reply, payload.invocations);
+      await loadRuns();
+    }
+  } catch (error) {
+    pending.remove();
+    renderChatTurn("assistant", `The chat request failed: ${error}`);
+  } finally {
+    state.chatBusy = false;
+    $("chat-send").disabled = false;
+  }
 }
 
 // ---------------------------------------------------------------- boot
@@ -618,7 +765,26 @@ async function boot() {
   select.addEventListener("change", renderCapabilityMeta);
   $("verbose").addEventListener("change", applyVerbose);
   $("tab-replay").addEventListener("click", () => selectTab("replay"));
+  $("tab-chat").addEventListener("click", () => selectTab("chat"));
   $("tab-discover").addEventListener("click", () => selectTab("discover"));
+
+  if (!state.config.chatAvailable) {
+    $("chat-warning").hidden = false;
+    $("chat-warning").textContent = state.config.chatUnavailableReason;
+    $("chat-input").disabled = true;
+    $("chat-send").disabled = true;
+  }
+  $("chat-send").addEventListener("click", () => void sendChat());
+  $("chat-input").addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      void sendChat();
+    }
+  });
+  $("chat-reset").addEventListener("click", () => {
+    state.chatMessages = [];
+    $("chat-log").innerHTML = '<p class="empty">New conversation started.</p>';
+  });
 
   $("run-replay").addEventListener("click", () => {
     const cap = selectedCapability();
