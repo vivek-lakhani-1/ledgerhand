@@ -26,6 +26,20 @@
       "pattern": "^[0-9]{6}$",
       "sensitivity": "pii",
       "example": "100234"
+    },
+    {
+      "name": "branch",
+      "type": "enum",
+      "required": false,
+      "enumValues": [
+        "MAIN-001",
+        "WEST-014",
+        "EAST-022"
+      ],
+      "description": "Branch to sign on at: MAIN-001 (Main Office), WEST-014 (Westside), EAST-022 (Eastgate). Defaults to MAIN-001.",
+      "sensitivity": "public",
+      "example": "MAIN-001",
+      "default": "MAIN-001"
     }
   ],
   "outputs": [
@@ -226,6 +240,50 @@
       }
     },
     {
+      "id": "s2b",
+      "description": "Choose the sign-on branch",
+      "action": {
+        "type": "select",
+        "target": {
+          "role": "combobox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "branch",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Branch select on the sign-on form"
+        },
+        "value": "{{inputs.branch}}"
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "button",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Sign On",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
+          ],
+          "description": "Sign On button"
+        },
+        "description": "Sign-on form still on screen after choosing the branch"
+      },
+      "timeoutMs": 8000
+    },
+    {
       "id": "s3",
       "description": "Sign on to the console",
       "action": {
@@ -252,10 +310,22 @@
         "backoffMs": 500
       },
       "postcondition": {
-        "kind": "text_present",
-        "text": "MAIN MENU",
-        "match": "contains",
-        "framePath": []
+        "kind": "all",
+        "of": [
+          {
+            "kind": "text_present",
+            "text": "MAIN MENU",
+            "match": "contains",
+            "framePath": []
+          },
+          {
+            "kind": "text_present",
+            "text": "BR {{inputs.branch}}",
+            "match": "contains",
+            "framePath": []
+          }
+        ],
+        "description": "Main menu shown and the status bar confirms the requested branch"
       }
     },
     {
@@ -296,10 +366,20 @@
       "code": "MEMBER_NOT_FOUND",
       "description": "No member record exists for the requested member number.",
       "detect": {
-        "kind": "text_present",
-        "text": "RECORD NOT FOUND",
-        "match": "contains",
-        "framePath": []
+        "kind": "all",
+        "of": [
+          {
+            "kind": "text_present",
+            "text": "RECORD NOT FOUND",
+            "match": "contains",
+            "framePath": []
+          },
+          {
+            "kind": "url_matches",
+            "pattern": "/members/"
+          }
+        ],
+        "description": "RECORD NOT FOUND shown for a member-record request"
       },
       "terminal": true,
       "outputs": []
@@ -396,6 +476,24 @@
           "clearFirst": true
         },
         {
+          "type": "select",
+          "target": {
+            "role": "combobox",
+            "framePath": [],
+            "strategies": [
+              {
+                "kind": "attribute",
+                "attr": "name",
+                "value": "branch",
+                "confidence": 0.98,
+                "origin": "captured"
+              }
+            ],
+            "description": "Branch select on the sign-on form"
+          },
+          "value": "{{inputs.branch}}"
+        },
+        {
           "type": "click",
           "target": {
             "role": "button",
@@ -465,11 +563,11 @@
     "llmStepCount": 16
   },
   "stability": {
-    "runs": 17,
-    "successes": 10,
-    "businessOutcomes": 3,
+    "runs": 25,
+    "successes": 15,
+    "businessOutcomes": 6,
     "failures": 4,
-    "lastRunAt": "2026-08-27T18:50:33.395Z"
+    "lastRunAt": "2026-08-27T21:16:31.739Z"
   },
   "tenantOverrides": {
     "demo-maintenance": {

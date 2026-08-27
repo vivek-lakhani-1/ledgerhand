@@ -409,10 +409,20 @@
       "code": "MEMBER_NOT_FOUND",
       "description": "No member record exists for the requested member number.",
       "detect": {
-        "kind": "text_present",
-        "text": "RECORD NOT FOUND",
-        "match": "contains",
-        "framePath": []
+        "kind": "all",
+        "of": [
+          {
+            "kind": "text_present",
+            "text": "RECORD NOT FOUND",
+            "match": "contains",
+            "framePath": []
+          },
+          {
+            "kind": "url_matches",
+            "pattern": "/members/"
+          }
+        ],
+        "description": "RECORD NOT FOUND shown for a member-record request"
       },
       "terminal": true,
       "outputs": []

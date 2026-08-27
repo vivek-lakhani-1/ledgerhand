@@ -476,10 +476,20 @@
       "code": "MEMBER_NOT_FOUND",
       "description": "No member record exists for the requested member number.",
       "detect": {
-        "kind": "text_present",
-        "text": "RECORD NOT FOUND",
-        "match": "contains",
-        "framePath": []
+        "kind": "all",
+        "of": [
+          {
+            "kind": "text_present",
+            "text": "RECORD NOT FOUND",
+            "match": "contains",
+            "framePath": []
+          },
+          {
+            "kind": "url_matches",
+            "pattern": "/members/"
+          }
+        ],
+        "description": "RECORD NOT FOUND shown for a member-record request"
       },
       "terminal": true,
       "outputs": []
@@ -643,11 +653,11 @@
     "llmStepCount": 0
   },
   "stability": {
-    "runs": 3,
+    "runs": 5,
     "successes": 1,
-    "businessOutcomes": 2,
-    "failures": 0,
-    "lastRunAt": "2026-08-27T17:54:49.923Z"
+    "businessOutcomes": 3,
+    "failures": 1,
+    "lastRunAt": "2026-08-27T20:32:53.327Z"
   },
   "tenantOverrides": {}
 }

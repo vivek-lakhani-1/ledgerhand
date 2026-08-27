@@ -17,7 +17,22 @@
       "height": 900
     }
   },
-  "inputs": [],
+  "inputs": [
+    {
+      "name": "branch",
+      "type": "enum",
+      "required": false,
+      "enumValues": [
+        "MAIN-001",
+        "WEST-014",
+        "EAST-022"
+      ],
+      "description": "Branch to sign on at: MAIN-001 (Main Office), WEST-014 (Westside), EAST-022 (Eastgate). Defaults to MAIN-001.",
+      "sensitivity": "public",
+      "example": "MAIN-001",
+      "default": "MAIN-001"
+    }
+  ],
   "outputs": [
     {
       "name": "sessionStatus",
@@ -132,6 +147,50 @@
       }
     },
     {
+      "id": "s2b",
+      "description": "Choose the sign-on branch",
+      "action": {
+        "type": "select",
+        "target": {
+          "role": "combobox",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "branch",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
+          ],
+          "description": "Branch select on the sign-on form"
+        },
+        "value": "{{inputs.branch}}"
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "postcondition": {
+        "kind": "control_present",
+        "target": {
+          "role": "button",
+          "framePath": [],
+          "strategies": [
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Sign On",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
+          ],
+          "description": "Sign On button"
+        },
+        "description": "Sign-on form still on screen after choosing the branch"
+      },
+      "timeoutMs": 8000
+    },
+    {
       "id": "s3",
       "description": "Sign on to the console",
       "action": {
@@ -158,10 +217,22 @@
         "backoffMs": 500
       },
       "postcondition": {
-        "kind": "text_present",
-        "text": "MAIN MENU",
-        "match": "contains",
-        "framePath": []
+        "kind": "all",
+        "of": [
+          {
+            "kind": "text_present",
+            "text": "MAIN MENU",
+            "match": "contains",
+            "framePath": []
+          },
+          {
+            "kind": "text_present",
+            "text": "BR {{inputs.branch}}",
+            "match": "contains",
+            "framePath": []
+          }
+        ],
+        "description": "Main menu shown and the status bar confirms the requested branch"
       }
     },
     {
@@ -270,11 +341,11 @@
     "llmStepCount": 8
   },
   "stability": {
-    "runs": 1,
-    "successes": 1,
+    "runs": 2,
+    "successes": 2,
     "businessOutcomes": 0,
     "failures": 0,
-    "lastRunAt": "2026-08-27T17:56:28.469Z"
+    "lastRunAt": "2026-08-27T19:43:16.245Z"
   },
   "tenantOverrides": {}
 }

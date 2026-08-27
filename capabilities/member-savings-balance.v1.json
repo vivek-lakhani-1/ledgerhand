@@ -692,11 +692,11 @@
     "llmStepCount": 0
   },
   "stability": {
-    "runs": 3,
-    "successes": 3,
+    "runs": 4,
+    "successes": 4,
     "businessOutcomes": 0,
     "failures": 0,
-    "lastRunAt": "2026-08-25T22:15:17.011Z"
+    "lastRunAt": "2026-08-27T19:37:44.184Z"
   },
   "tenantOverrides": {
     "beta": {
