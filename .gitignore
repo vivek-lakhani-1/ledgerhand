@@ -12,3 +12,5 @@ evidence/runs/tmp-*
 evidence/runs/replay-*
 evidence/runs/discover-*
 .DS_Store
+# Generated documentation; rebuild rather than commit.
+*.pdf

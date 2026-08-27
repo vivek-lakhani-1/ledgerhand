@@ -89,13 +89,21 @@ HTML, table layout, a per-transaction hidden token, and injectable runtime fault
 local app to start; the capabilities drive the live site. The write-up of what the adaptation
 took is in [ADAPTATION.md](ADAPTATION.md).
 
-The seven functions are covered by seven artifacts:
+Sign-on-based capabilities take an optional `branch` input (`MAIN-001`, `WEST-014`, `EAST-022`;
+defaults to `MAIN-001`) and prove the chosen branch in the session's status bar. Discovery against
+Meridian names its credential env vars per run — `--secret MERIDIAN_OPERATOR --secret
+MERIDIAN_PASSWORD` on the CLI, or the "Credential env vars" field in the console's Discover form,
+which switches to the Meridian pair automatically for Meridian entry URLs.
+
+The function surface is covered by these artifacts:
 
 | Capability | Does | Notable |
 | --- | --- | --- |
 | `meridian.signon` | Sign on, confirm the main menu | `INVALID_CREDENTIALS` outcome |
 | `meridian.member.lookup` | Search members by last name | `NO_MATCH` outcome |
 | `meridian.member.balance` | Read a member's record and primary share balance | `demo-maintenance` / `demo-timeout` / `demo-server-error` tenant variants |
+| `meridian.member.shares` | List every share on a member's record | powers the chat's option lists |
+| `meridian.share.balance` | Read one share's type, balance and status by exact share ID | row selected by `{{inputs.shareId}}` |
 | `meridian.funds.transfer` | Fill, review and post a transfer | irreversible post step; `INSUFFICIENT_FUNDS` |
 | `meridian.share.open` | Open a new share through review | returns the new share id |
 | `meridian.member.update` | Save new contact details | `VALIDATION_REJECTED` carries the app's message |
