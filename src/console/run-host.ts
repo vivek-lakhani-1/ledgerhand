@@ -129,6 +129,24 @@ export class RunHost {
     return this.runs.get(runId)?.events ?? [];
   }
 
+  /**
+   * Resolves once the run reaches a terminal state. The synchronous capability API sits on top
+   * of the same host the console streams from, so an invocation is also a watchable run.
+   */
+  wait(runId: string): Promise<RunSummary> {
+    const run = this.runs.get(runId);
+    if (!run) return Promise.reject(new Error(`Run ${runId} was not found`));
+    if (run.summary.finishedAt) return Promise.resolve(run.summary);
+    return new Promise((resolve) => {
+      const listener = (summary: RunSummary): void => {
+        if (!summary.finishedAt) return;
+        run.stateListeners.delete(listener);
+        resolve(summary);
+      };
+      run.stateListeners.add(listener);
+    });
+  }
+
   /** Replays the buffered history to a new subscriber, then streams everything after it. */
   subscribe(runId: string, onEvent: (event: RunEvent) => void, onState: (summary: RunSummary) => void): () => void {
     const run = this.runs.get(runId);

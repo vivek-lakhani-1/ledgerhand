@@ -107,14 +107,23 @@ export class ScriptedModelClient implements ModelClient {
   }
 }
 
+export type AnthropicModelOptions = {
+  model?: string;
+  effort?: "low" | "medium" | "high";
+};
+
 export class AnthropicModelClient implements ModelClient {
   private readonly client: Anthropic;
+  private readonly model: string;
+  private readonly effort: "low" | "medium" | "high";
 
-  constructor() {
+  constructor(options: AnthropicModelOptions = {}) {
     if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
       throw new DiscoveryConfigurationError();
     }
     this.client = new Anthropic();
+    this.model = options.model ?? "claude-opus-5";
+    this.effort = options.effort ?? "high";
   }
 
   async next(req: { system: string; messages: MessageParam[]; tools: ToolDef[] }): Promise<{
@@ -125,10 +134,10 @@ export class AnthropicModelClient implements ModelClient {
     // guessing a fixed budget; effort "high" suits a navigation task where a wrong click
     // costs more than the extra tokens.
     const response = await this.client.messages.create({
-      model: "claude-opus-5",
+      model: this.model,
       max_tokens: 16000,
       thinking: { type: "adaptive" },
-      output_config: { effort: "high" },
+      output_config: { effort: this.effort },
       system: req.system,
       messages: req.messages,
       tools: req.tools,

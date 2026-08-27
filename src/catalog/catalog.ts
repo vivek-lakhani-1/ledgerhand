@@ -74,7 +74,7 @@ export class CapabilityCatalog {
     return [...this.capabilities.values()]
       .filter((capability) => options.includeDraft === true || capability.approval !== "draft")
       .map((capability) => ({
-        name: capability.name,
+        name: toolNameFor(capability.name),
         description: toolDescription(capability),
         input_schema: {
           type: "object" as const,
@@ -125,6 +125,20 @@ export function loadCatalog(dir = "capabilities"): CapabilityCatalog {
   }
 
   return new CapabilityCatalog(capabilities, invalid);
+}
+
+/**
+ * Capability names are dotted; the Anthropic API only accepts tool names matching
+ * ^[a-zA-Z0-9_-]{1,128}$. The mapping must be reversible so a tool call can be routed back to
+ * its capability, and capability names cannot contain "__" (the name pattern has no way to
+ * produce one from a single separator), so the substitution cannot collide.
+ */
+export function toolNameFor(capabilityName: string): string {
+  return capabilityName.replaceAll(".", "__");
+}
+
+export function capabilityNameForTool(toolName: string): string {
+  return toolName.replaceAll("__", ".");
 }
 
 function paramSchema(input: ParamSpec): Record<string, unknown> {

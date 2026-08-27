@@ -4,8 +4,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Server } from "node:http";
 import { injectionModes } from "../../target-app/inject.js";
-import { Capability, type Capability as CapabilityValue } from "../schema/index.js";
+import { capabilityNameForTool, loadCatalog } from "../catalog/catalog.js";
+import { AnthropicModelClient, type ModelClient } from "../discover/model.js";
+import { Capability, type Capability as CapabilityValue, type ReplayResult } from "../schema/index.js";
 import { lintCapability } from "../schema/lint.js";
+import { runChatTurn } from "./chat.js";
 import { RunHost } from "./run-host.js";
 
 export type ConsoleServerOptions = {
@@ -13,6 +16,8 @@ export type ConsoleServerOptions = {
   port?: number;
   capabilitiesDir?: string;
   targetAppUrl?: string;
+  /** Swapped in tests so a chat turn needs no API key and no network. */
+  chatModel?: () => ModelClient;
 };
 
 export type ConsoleServer = {
@@ -27,6 +32,9 @@ export function createConsoleApp(options: ConsoleServerOptions = {}): { app: Exp
   const host = options.host ?? new RunHost();
   const capabilitiesDir = options.capabilitiesDir ?? path.join(process.cwd(), "capabilities");
   const targetAppUrl = options.targetAppUrl ?? `http://127.0.0.1:${process.env.TARGET_APP_PORT ?? "4599"}`;
+  // The chat turns are short tool-picking exchanges; they do not need discovery's deep model.
+  const chatModel = options.chatModel
+    ?? (() => new AnthropicModelClient({ model: process.env.CHAT_MODEL ?? "claude-sonnet-5", effort: "medium" }));
 
   const app = express();
   app.use(express.json({ limit: "64kb" }));
@@ -43,11 +51,81 @@ export function createConsoleApp(options: ConsoleServerOptions = {}): { app: Exp
       injectionModes,
       discoveryAvailable: Boolean(process.env.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_AUTH_TOKEN),
       discoveryUnavailableReason: "ANTHROPIC_API_KEY is not set, so discovery cannot run.",
+      chatAvailable: Boolean(process.env.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_AUTH_TOKEN),
+      chatUnavailableReason: "ANTHROPIC_API_KEY is not set, so the chatbot cannot run.",
     });
   });
 
   app.get("/api/capabilities", (_req, res) => {
     res.json(listCapabilities(capabilitiesDir));
+  });
+
+  // The agent-facing surface. An agent picks a capability by name from the catalog, invokes it
+  // with typed inputs, and gets the replay's structured result back - it never learns anything
+  // about the UI underneath. Draft artifacts are listed but not invocable: approval is a human
+  // decision the API must not be able to skip.
+  app.get("/api/catalog", (_req, res) => {
+    const catalog = loadCatalog(capabilitiesDir);
+    res.json(catalog.list());
+  });
+
+  app.get("/api/catalog/tools", (_req, res) => {
+    const catalog = loadCatalog(capabilitiesDir);
+    res.json(catalog.toToolSchemas());
+  });
+
+  app.post("/api/catalog/:name/invoke", async (req, res) => {
+    const found = findCapabilityByName(capabilitiesDir, req.params.name);
+    if (!found) {
+      res.status(404).json({ error: `Capability ${req.params.name} was not found in the catalog` });
+      return;
+    }
+    if (found.capability.approval === "draft") {
+      res.status(403).json({ error: `Capability ${req.params.name} is a draft and cannot be invoked` });
+      return;
+    }
+    const inputs = isRecord(req.body?.inputs) ? req.body.inputs : {};
+    const tenant = typeof req.body?.tenant === "string" && req.body.tenant ? req.body.tenant : undefined;
+    const finished = await invokeCapability(host, found, inputs, { tenant, operator: req.body?.operator === true });
+    if (finished.result) {
+      res.json({ runId: finished.runId, result: finished.result });
+      return;
+    }
+    // The run ended without a replay result: the browser died, the process was stopped, or an
+    // infrastructure error fired. That is the API's failure, not a statement about the target.
+    res.status(502).json({ runId: finished.runId, error: finished.error });
+  });
+
+  // The chatbot is a thin demo driver over the same invoke path: the model chooses a capability,
+  // the invocation runs through the identical guardrails, and the page holds the transcript.
+  app.post("/api/chat", async (req, res) => {
+    if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
+      res.status(400).json({ error: "ANTHROPIC_API_KEY is not set, so the chatbot cannot run." });
+      return;
+    }
+    const messages = Array.isArray(req.body?.messages) ? req.body.messages : null;
+    if (!messages || messages.length === 0) {
+      res.status(400).json({ error: "messages is required and must be a non-empty array" });
+      return;
+    }
+    try {
+      const turn = await runChatTurn({
+        messages,
+        tools: loadCatalog(capabilitiesDir).toToolSchemas(),
+        model: chatModel(),
+        invoke: async (toolName, inputs) => {
+          const name = capabilityNameForTool(toolName);
+          const found = findCapabilityByName(capabilitiesDir, name);
+          if (!found || found.capability.approval === "draft") {
+            return { runId: "", result: null, error: `Capability ${name} is not invocable` };
+          }
+          return invokeCapability(host, found, inputs, {});
+        },
+      });
+      res.json(turn);
+    } catch (error) {
+      res.status(502).json({ error: error instanceof Error ? error.message : String(error) });
+    }
   });
 
   app.post("/api/runs", (req, res) => {
@@ -248,6 +326,44 @@ function listCapabilities(directory: string): CapabilityListing[] {
     }
   }
   return listings.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Starts a replay for a resolved capability and waits for its terminal summary. */
+async function invokeCapability(
+  host: RunHost,
+  found: { capability: CapabilityValue; path: string },
+  inputs: Record<string, unknown>,
+  options: { tenant?: string; operator?: boolean },
+): Promise<{ runId: string; result: ReplayResult | null; error: string | null }> {
+  const started = host.startReplay({
+    capability: found.capability,
+    capabilityPath: found.path,
+    inputs,
+    tenant: options.tenant,
+    operator: options.operator === true,
+  });
+  const finished = await host.wait(started.runId);
+  return {
+    runId: finished.runId,
+    result: finished.result,
+    error: finished.result ? null : finished.error ?? `Run ended with status ${finished.status} and no result`,
+  };
+}
+
+/** Finds the artifact file whose capability name matches, since invocation is by name, not file. */
+function findCapabilityByName(directory: string, name: string): { capability: CapabilityValue; path: string } | null {
+  if (!fs.existsSync(directory)) return null;
+  for (const entry of fs.readdirSync(directory)) {
+    if (!entry.endsWith(".json")) continue;
+    const candidate = path.join(directory, entry);
+    try {
+      const capability = readCapability(candidate);
+      if (capability.name === name) return { capability, path: candidate };
+    } catch {
+      // Invalid artifacts are already surfaced by the listing; skip them here.
+    }
+  }
+  return null;
 }
 
 function readCapability(filename: string): CapabilityValue {
