@@ -83,10 +83,13 @@ export function validateInputs(cap: Capability, rawInputs: Record<string, unknow
   }
 
   for (const spec of cap.inputs) {
-    const raw = rawInputs[spec.name];
+    let raw = rawInputs[spec.name];
     if (raw === undefined || raw === null || (typeof raw === "string" && raw.trim() === "")) {
-      if (spec.required) issues.push({ field: spec.name, message: "is required" });
-      continue;
+      if (spec.default === undefined) {
+        if (spec.required) issues.push({ field: spec.name, message: "is required" });
+        continue;
+      }
+      raw = spec.default;
     }
 
     try {

@@ -13,6 +13,8 @@ export const ParamSpec = z
     pattern: z.string().optional(),
     sensitivity: Sensitivity.default("public"),
     example: z.unknown().optional(),
+    /** Used when the caller omits the input; goes through the same coercion and pattern checks. */
+    default: z.unknown().optional(),
   })
   .strict();
 

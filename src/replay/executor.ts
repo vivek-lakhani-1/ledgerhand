@@ -206,7 +206,9 @@ export async function replay(capability: Capability, options: ReplayOptions): Pr
 
   let outputs: Record<string, unknown>;
   try {
-    outputs = await extractOutputs(cap.outputs, options.surface);
+    // Outputs may scope an extraction target by an input (a share id selecting its table row),
+    // so they resolve through the same template context as checkpoints do.
+    outputs = await extractOutputs(resolveTemplatesIn(cap.outputs, context), options.surface);
   } catch (error) {
     const outputName = error instanceof OutputExtractionError ? error.outputName : "declared output";
     return finish(await failureWithEvidence(run, {
