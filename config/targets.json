@@ -1,0 +1,163 @@
+{
+  "customTargetDefaults": {
+    "discoverySecretNames": ["APP_USER", "APP_PASSWORD"]
+  },
+  "targets": [
+    {
+      "id": "meridian",
+      "name": "Meridian Core",
+      "category": "Core Banking",
+      "origin": "https://web-sample.interface-hiring.com",
+      "entryUrl": "https://web-sample.interface-hiring.com/signon",
+      "discoverySecretNames": ["MERIDIAN_OPERATOR", "MERIDIAN_PASSWORD"],
+      "credentialProfiles": [
+        {
+          "id": "recorded",
+          "label": "As recorded",
+          "description": "Use the credential variables each automation was recorded with.",
+          "secretAliases": {}
+        },
+        {
+          "id": "teller",
+          "label": "Teller (teller1)",
+          "description": "Normal teller-level account. Supervisor-gated steps will stop and ask for human help.",
+          "secretAliases": {
+            "MERIDIAN_HOLD_OPERATOR": "MERIDIAN_OPERATOR",
+            "MERIDIAN_HOLD_PASSWORD": "MERIDIAN_PASSWORD"
+          }
+        },
+        {
+          "id": "supervisor",
+          "label": "Supervisor (super1)",
+          "description": "Supervisor-level account. Irreversible steps still pause for explicit approval.",
+          "secretAliases": {
+            "MERIDIAN_OPERATOR": "MERIDIAN_SUPERVISOR",
+            "MERIDIAN_PASSWORD": "MERIDIAN_SUPERVISOR_PASSWORD",
+            "MERIDIAN_HOLD_OPERATOR": "MERIDIAN_SUPERVISOR",
+            "MERIDIAN_HOLD_PASSWORD": "MERIDIAN_SUPERVISOR_PASSWORD"
+          }
+        }
+      ]
+    },
+    {
+      "id": "local-app",
+      "name": "Member Services",
+      "category": "Credit Union Operations",
+      "origin": "http://127.0.0.1:4599",
+      "entryUrl": "http://127.0.0.1:4599/t/alpha/msc/login",
+      "discoverySecretNames": ["APP_USER", "APP_PASSWORD"],
+      "credentialProfiles": [
+        {
+          "id": "recorded",
+          "label": "As recorded",
+          "description": "Use the credential variables each automation was recorded with.",
+          "secretAliases": {}
+        }
+      ]
+    },
+    {
+      "id": "claimsdesk",
+      "name": "ClaimsDesk Legacy",
+      "category": "Insurance Claims",
+      "origin": "https://claims.claimsdesk.example",
+      "entryUrl": "https://claims.claimsdesk.example/login",
+      "discoverySecretNames": ["CLAIMSDESK_USER", "CLAIMSDESK_PASSWORD"]
+    },
+    {
+      "id": "patient-admin",
+      "name": "Patient Admin",
+      "category": "Healthcare Administration",
+      "origin": "https://admin.patientadmin.example",
+      "entryUrl": "https://admin.patientadmin.example/login",
+      "discoverySecretNames": ["PATIENTADMIN_USER", "PATIENTADMIN_PASSWORD"]
+    },
+    {
+      "id": "benefits-portal",
+      "name": "Benefits Portal",
+      "category": "Government Benefits",
+      "origin": "https://portal.benefits.example",
+      "entryUrl": "https://portal.benefits.example/signin",
+      "discoverySecretNames": ["BENEFITS_USER", "BENEFITS_PASSWORD"]
+    },
+    {
+      "id": "utilityserve",
+      "name": "UtilityServe",
+      "category": "Utility Billing",
+      "origin": "https://ops.utilityserve.example",
+      "entryUrl": "https://ops.utilityserve.example/login",
+      "discoverySecretNames": ["UTILITYSERVE_USER", "UTILITYSERVE_PASSWORD"]
+    },
+    {
+      "id": "telcocare",
+      "name": "TelcoCare",
+      "category": "Telecom Customer Service",
+      "origin": "https://care.telcocare.example",
+      "entryUrl": "https://care.telcocare.example/login",
+      "discoverySecretNames": ["TELCOCARE_USER", "TELCOCARE_PASSWORD"]
+    },
+    {
+      "id": "freightops",
+      "name": "FreightOps",
+      "category": "Logistics / Shipping",
+      "origin": "https://ops.freightops.example",
+      "entryUrl": "https://ops.freightops.example/login",
+      "discoverySecretNames": ["FREIGHTOPS_USER", "FREIGHTOPS_PASSWORD"]
+    },
+    {
+      "id": "retail-backoffice",
+      "name": "RetailBackOffice",
+      "category": "Retail Operations",
+      "origin": "https://backoffice.retail.example",
+      "entryUrl": "https://backoffice.retail.example/login",
+      "discoverySecretNames": ["RETAILBO_USER", "RETAILBO_PASSWORD"]
+    },
+    {
+      "id": "legacy-erp",
+      "name": "LegacyERP",
+      "category": "ERP / Finance",
+      "origin": "https://erp.legacyerp.example",
+      "entryUrl": "https://erp.legacyerp.example/login",
+      "discoverySecretNames": ["LEGACYERP_USER", "LEGACYERP_PASSWORD"]
+    },
+    {
+      "id": "customer360",
+      "name": "Customer360 Legacy",
+      "category": "CRM / Customer Administration",
+      "origin": "https://crm.customer360.example",
+      "entryUrl": "https://crm.customer360.example/login",
+      "discoverySecretNames": ["CUSTOMER360_USER", "CUSTOMER360_PASSWORD"]
+    },
+    {
+      "id": "paymentops",
+      "name": "PaymentOps",
+      "category": "Payments Operations",
+      "origin": "https://ops.paymentops.example",
+      "entryUrl": "https://ops.paymentops.example/login",
+      "discoverySecretNames": ["PAYMENTOPS_USER", "PAYMENTOPS_PASSWORD"]
+    },
+    {
+      "id": "reservationdesk",
+      "name": "ReservationDesk",
+      "category": "Travel / Reservation Systems",
+      "origin": "https://desk.reservationdesk.example",
+      "entryUrl": "https://desk.reservationdesk.example/login",
+      "discoverySecretNames": ["RESERVATIONDESK_USER", "RESERVATIONDESK_PASSWORD"]
+    },
+    {
+      "id": "campusadmin",
+      "name": "CampusAdmin",
+      "category": "Education Administration",
+      "origin": "https://admin.campusadmin.example",
+      "entryUrl": "https://admin.campusadmin.example/login",
+      "discoverySecretNames": ["CAMPUSADMIN_USER", "CAMPUSADMIN_PASSWORD"]
+    },
+    {
+      "id": "factoryops",
+      "name": "FactoryOps",
+      "category": "Manufacturing Operations",
+      "origin": "https://floor.factoryops.example",
+      "entryUrl": "https://floor.factoryops.example/login",
+      "discoverySecretNames": ["FACTORYOPS_USER", "FACTORYOPS_PASSWORD"]
+    }
+  ]
+}
