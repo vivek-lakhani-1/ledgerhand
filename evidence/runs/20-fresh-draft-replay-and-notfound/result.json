@@ -1,0 +1,15 @@
+{
+  "status": "success",
+  "runId": "replay-0555f7490f08",
+  "capability": {
+    "id": "cap_look_up_a_member",
+    "version": "1.0.0"
+  },
+  "outputs": {
+    "primaryShareBalance": "$14.00",
+    "primaryShareStatus": "OPEN"
+  },
+  "stepsExecuted": 10,
+  "durationMs": 20480,
+  "evidenceDir": "evidence/runs/replay-0555f7490f08"
+}

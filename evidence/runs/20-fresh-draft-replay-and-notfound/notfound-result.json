@@ -1,0 +1,13 @@
+{
+  "status": "business_outcome",
+  "runId": "replay-2719932facdb",
+  "capability": {
+    "id": "cap_look_up_a_member",
+    "version": "1.0.0"
+  },
+  "code": "MEMBER_NOT_FOUND",
+  "message": "No member record was found for the requested identifier.",
+  "outputs": {},
+  "atStepId": "s7",
+  "evidenceDir": "evidence/runs/replay-2719932facdb"
+}
