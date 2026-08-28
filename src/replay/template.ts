@@ -33,7 +33,12 @@ export class InputValidationError extends Error {
   }
 }
 
-const referencePattern = /\{\{\s*([a-zA-Z][a-zA-Z0-9_]*)\.([a-zA-Z][a-zA-Z0-9_]*)\s*\}\}/g;
+/**
+ * The one grammar for artifact template references. Exported so other layers that need to
+ * find references (e.g. the credential-profile rewrite) cannot drift from what replay
+ * actually resolves.
+ */
+export const referencePattern = /\{\{\s*([a-zA-Z][a-zA-Z0-9_]*)\.([a-zA-Z][a-zA-Z0-9_]*)\s*\}\}/g;
 
 /**
  * Resolve only the three reviewable namespaces in the artifact DSL. Secret values are

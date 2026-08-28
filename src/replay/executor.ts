@@ -71,6 +71,12 @@ type RunContext = {
   env: Record<string, string | undefined>;
   recoveryState: RecoveryRunState;
   recoveryAttempts: string[];
+  /**
+   * Total time this run spent parked on a human decision. The capability's wall-clock
+   * timeout bounds the automation, not the reviewer: a careful human reading an approval
+   * card must not cause the next step to fail as TIMEOUT.
+   */
+  humanWaitMs: number;
 };
 
 export async function replay(capability: Capability, options: ReplayOptions): Promise<ReplayResult> {
@@ -136,6 +142,7 @@ export async function replay(capability: Capability, options: ReplayOptions): Pr
     env,
     recoveryState: { attempts: new Map(), inputs, env, timeoutMs: cap.policy.timeoutMs },
     recoveryAttempts: [],
+    humanWaitMs: 0,
   };
 
   try {
@@ -160,13 +167,13 @@ export async function replay(capability: Capability, options: ReplayOptions): Pr
   const maxSteps = Math.min(cap.steps.length, cap.policy.maxSteps);
   for (let stepIndex = 0; stepIndex < maxSteps; stepIndex += 1) {
     const step = cap.steps[stepIndex];
-    if (Date.now() - startedAt > cap.policy.timeoutMs) {
+    if (Date.now() - startedAt - run.humanWaitMs > cap.policy.timeoutMs) {
       return finish(await failureWithEvidence(run, {
         class: "TIMEOUT",
         stepId: step.id,
         stepDescription: step.description,
         expected: "the capability to finish within its wall-clock timeout",
-        observed: `run elapsed ${Date.now() - startedAt}ms`,
+        observed: `run elapsed ${Date.now() - startedAt}ms (${run.humanWaitMs}ms of it waiting on a human decision)`,
         message: `Capability timeout exceeded before step ${step.id}`,
         recoveryAttempts: [...run.recoveryAttempts],
       }, "run-timeout"));
@@ -724,6 +731,7 @@ async function raiseEscalation(
       },
     };
   }
+  const escalationStartedAt = Date.now();
   const decision = await run.options.escalate({
     runId: run.runId,
     capability: { id: run.cap.id, version: run.cap.version },
@@ -738,6 +746,7 @@ async function raiseEscalation(
     domPath,
     evidenceDir: run.options.evidence.runDir,
   });
+  run.humanWaitMs += Date.now() - escalationStartedAt;
   return { kind: "decision", ...decision };
 }
 

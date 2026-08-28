@@ -187,11 +187,17 @@ export async function startOperatorServer(options: OperatorServerOptions): Promi
   const port = options.port ?? Number(process.env.OPERATOR_PORT ?? "4610");
   const host = options.host ?? "127.0.0.1";
   const server = await new Promise<Server>((resolve, reject) => {
-    const listener = app.listen(port, host, () => resolve(listener));
+    // Express 5.1 invokes the listen callback error-first: on EADDRINUSE it still fires, with
+    // the error as its argument. Ignoring that argument here once reported a port this server
+    // never actually bound.
+    const listener = app.listen(port, host, (error?: Error) => (error ? reject(error) : resolve(listener)));
     listener.once("error", reject);
   });
   const address = server.address();
-  const actualPort = typeof address === "object" && address ? address.port : port;
+  if (typeof address !== "object" || !address) {
+    throw new Error("Operator server did not bind an address");
+  }
+  const actualPort = address.port;
   return {
     app,
     server,

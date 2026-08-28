@@ -11,6 +11,7 @@ import { RunLogger } from "../src/evidence/logger.js";
 import { PolicyEngine } from "../src/policy/policy.js";
 import { Redactor } from "../src/policy/redact.js";
 import { BrowserSession } from "../src/session/session.js";
+import type { Surface } from "../src/surface/types.js";
 import { WebSurface } from "../src/surface/web/web-surface.js";
 
 const TEST_PORT = 4641;
@@ -106,13 +107,51 @@ describe("discovery loop", () => {
     expect(run.reason).toContain("ambiguous");
   });
 
+  it("feeds a missing template input value back to the model instead of crashing the run", async () => {
+    const run = await runScript([
+      call("observe", {}),
+      call("declare_input", { name: "otherId", type: "string", description: "An input the run was never given", sensitivity: "pii", example: "10001" }),
+      call("type_text", { ref: "c6", text: "{{inputs.otherId}}", why: "Type a value that was never supplied" }),
+      call("request_human_help", { reason: "No value was supplied for otherId", whatIWasTrying: "Fill the member search" }),
+    ]);
+
+    expect(run.threw).toBeUndefined();
+    expect(run.status).toBe("escalated");
+    expect(run.trace.some((entry) => entry.tool === "type_text")).toBe(false);
+    const transcript = fs.readFileSync(path.join(run.evidenceDir, "discovery", "transcript.jsonl"), "utf8");
+    expect(transcript).toContain("No supplied value exists for input otherId");
+    expect(transcript).toContain("\"is_error\":true");
+  });
+
+  it("ends with a stopped result and a reason when the entry URL is unreachable", async () => {
+    const run = await runScript([], { entryUrl: "http://127.0.0.1:4643/never-up" });
+
+    expect(run.threw).toBeUndefined();
+    expect(run.status).toBe("stopped");
+    expect(run.reason).toContain("Entry navigation failed");
+    const runEnd = readRunEnd(run.runLogPath);
+    expect(runEnd.status).toBe("stopped");
+    expect(String(runEnd.reason)).toContain("Entry navigation failed");
+  });
+
+  it("records the escaping error on run.end when the surface dies mid-run", async () => {
+    const run = await runScript([
+      call("observe", {}),
+    ], { wrapSurface: explodeOnSecondObserve });
+
+    expect(run.threw).toContain("surface exploded mid-run");
+    const runEnd = readRunEnd(run.runLogPath);
+    expect(runEnd.status).toBe("stopped");
+    expect(String(runEnd.error)).toContain("surface exploded mid-run");
+  });
+
   it("uses the no-progress stopping rule before maxSteps", async () => {
     const run = await runScript([
       call("observe", {}),
       call("observe", {}),
       call("observe", {}),
       call("observe", {}),
-    ], 10);
+    ], { maxSteps: 10 });
 
     expect(run.status).toBe("escalated");
     expect(run.reason).toContain("Three consecutive observations");
@@ -139,11 +178,43 @@ function call(name: string, input: Record<string, unknown>) {
   return { name, input };
 }
 
-async function runScript(calls: Array<{ name: string; input: Record<string, unknown> }>, maxSteps = 25): Promise<{
+function readRunEnd(runLogPath: string): Record<string, unknown> {
+  const lines = fs.readFileSync(runLogPath, "utf8").trim().split("\n");
+  const runEnd = lines.map((line) => JSON.parse(line) as Record<string, unknown>).find((event) => event.type === "run.end");
+  if (!runEnd) throw new Error("run.jsonl has no run.end event");
+  return runEnd;
+}
+
+function explodeOnSecondObserve(surface: WebSurface): Surface {
+  let observes = 0;
+  return new Proxy(surface, {
+    get(target, prop, receiver) {
+      if (prop === "observe") {
+        return async () => {
+          observes += 1;
+          if (observes >= 2) throw new Error("surface exploded mid-run");
+          return target.observe();
+        };
+      }
+      const value = Reflect.get(target, prop, receiver);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  }) as unknown as Surface;
+}
+
+type RunScriptOptions = {
+  maxSteps?: number;
+  entryUrl?: string;
+  wrapSurface?: (surface: WebSurface) => Surface;
+};
+
+async function runScript(calls: Array<{ name: string; input: Record<string, unknown> }>, options: RunScriptOptions = {}): Promise<{
   status: string;
   trace: Awaited<ReturnType<typeof runDiscovery>>["trace"];
   reason?: string;
+  threw?: string;
   evidenceDir: string;
+  runLogPath: string;
   modelCalls: number;
 }> {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "ledgerhand-discovery-"));
@@ -151,7 +222,8 @@ async function runScript(calls: Array<{ name: string; input: Record<string, unkn
   const redactor = new Redactor({ secrets: [APP_PASSWORD], piiValues: [] });
   const logger = new RunLogger(runId, redactor, root);
   const evidence = new EvidenceDir(runId, redactor, root);
-  const policy = new PolicyEngine({ allowedOrigins: [ORIGIN], allowedPathPatterns: ["/**"], maxRisk: "safe" });
+  const entryUrl = options.entryUrl ?? ENTRY_URL;
+  const policy = new PolicyEngine({ allowedOrigins: [ORIGIN, new URL(entryUrl).origin], allowedPathPatterns: ["/**"], maxRisk: "safe" });
   const session = await BrowserSession.launch({
     headless: true,
     viewport: { width: 1280, height: 900 },
@@ -159,19 +231,29 @@ async function runScript(calls: Array<{ name: string; input: Record<string, unkn
   });
   const surface = new WebSurface({ session, policy, logger, caller: "automation" });
   const model = new ScriptedModelClient(calls);
+  const runLogPath = path.join(root, runId, "run.jsonl");
   try {
     const result = await runDiscovery({
       goal: "Look up the member savings balance",
-      entryUrl: ENTRY_URL,
+      entryUrl,
       inputs: { memberId: "10001" },
-      surface,
+      surface: options.wrapSurface ? options.wrapSurface(surface) : surface,
       policy,
       logger,
       evidence,
       model,
-      maxSteps,
+      maxSteps: options.maxSteps ?? 25,
     });
-    return { ...result, evidenceDir: evidence.runDir, modelCalls: model.callsUsed };
+    return { ...result, evidenceDir: evidence.runDir, runLogPath, modelCalls: model.callsUsed };
+  } catch (error) {
+    return {
+      status: "threw",
+      trace: [],
+      threw: error instanceof Error ? error.message : String(error),
+      evidenceDir: evidence.runDir,
+      runLogPath,
+      modelCalls: model.callsUsed,
+    };
   } finally {
     await session.close();
   }

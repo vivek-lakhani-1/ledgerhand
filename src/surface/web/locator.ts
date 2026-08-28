@@ -5,6 +5,8 @@ import { enumerateFrames, findFrame } from "./perception.js";
 
 export type ResolveAttempt = { strategy: string; matchCount: number; error?: string };
 
+const INTERACTIVE_ROLES = new Set<TargetDescriptor["role"]>(["button", "link", "textbox", "checkbox", "radio", "combobox", "option"]);
+
 export type Resolved = Omit<SurfaceResolved, "locator" | "strategy"> & {
   locator: Locator;
   strategy: ResolutionStrategy["kind"];
@@ -101,7 +103,7 @@ export class WebLocatorResolver {
       case "placeholder":
         return frame.getByPlaceholder(strategy.text, { exact: true });
       case "table_cell":
-        return this.tableCellLocator(frame, strategy, deadline);
+        return this.tableCellLocator(frame, strategy, targetRole, deadline);
       case "text":
         return frame.getByRole(playwrightRole(targetRole), {
           name: strategy.text,
@@ -120,7 +122,12 @@ export class WebLocatorResolver {
     }
   }
 
-  private async tableCellLocator(frame: Frame, strategy: Extract<ResolutionStrategy, { kind: "table_cell" }>, deadline: number): Promise<Locator | null> {
+  private async tableCellLocator(
+    frame: Frame,
+    strategy: Extract<ResolutionStrategy, { kind: "table_cell" }>,
+    targetRole: TargetDescriptor["role"],
+    deadline: number,
+  ): Promise<Locator | null> {
     const tables = frame.locator("table");
     const tableCount = await tables.count();
     const matches: Locator[] = [];
@@ -136,7 +143,10 @@ export class WebLocatorResolver {
       const columnIndex = info.findIndex((header) => header === strategy.columnHeader);
       if (columnIndex < 0) continue;
       const rows = table.locator("tr").filter({ hasText: strategy.rowMatch });
-      matches.push(rows.locator("td,th").nth(columnIndex));
+      const cell = rows.locator("td,th").nth(columnIndex);
+      // For control roles the action target is the control inside the cell, not the cell
+      // itself - performing e.g. selectOption on the <td> fails with "not a <select>".
+      matches.push(INTERACTIVE_ROLES.has(targetRole) ? cell.getByRole(playwrightRole(targetRole)) : cell);
     }
     if (matches.length === 0) return frame.locator('[data-ledgerhand-no-match="true"]');
     return unionLocators(matches);

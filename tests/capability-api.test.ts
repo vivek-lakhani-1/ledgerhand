@@ -60,6 +60,8 @@ class FakeInvokeHost {
       exitCode: null,
       operatorUrl: null,
       eventCount: 0,
+      pendingIntervention: null,
+      credentialProfile: null,
     };
   }
 }

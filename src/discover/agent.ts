@@ -98,6 +98,7 @@ export async function runDiscovery(options: DiscoveryOptions): Promise<Discovery
   let acceptedCalls = 0;
   let finish: DiscoveryFinish | undefined;
   let result: DiscoveryResult | undefined;
+  let escapedError: string | undefined;
 
   const secretNames = options.secretNames?.length ? options.secretNames : ["APP_USER", "APP_PASSWORD"];
   for (const key of secretNames) {
@@ -137,7 +138,18 @@ export async function runDiscovery(options: DiscoveryOptions): Promise<Discovery
           reason: "Entry URL denied by policy: " + entryDecision.reason,
         });
       }
-      await options.surface.act(entryAction, { risk: "safe", mode: "discovery" });
+      try {
+        await options.surface.act(entryAction, { risk: "safe", mode: "discovery" });
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        return finishRun({
+          ...resultBase(),
+          status: "stopped",
+          trace,
+          runId,
+          reason: "Entry navigation failed: " + detail,
+        });
+      }
     }
 
     currentObservation = await options.surface.observe();
@@ -264,12 +276,17 @@ export async function runDiscovery(options: DiscoveryOptions): Promise<Discovery
         return finishRun({ ...resultBase(), status: "escalated", trace, runId, reason });
       }
     }
+  } catch (error) {
+    escapedError = error instanceof Error ? error.message : String(error);
+    throw error;
   } finally {
     options.evidence.writeText("discovery/transcript.jsonl", transcript.join("\n") + (transcript.length > 0 ? "\n" : ""));
     options.logger.emit("run.end", {
       origin: "discovery",
       status: result?.status ?? "stopped",
       traceEntries: trace.length,
+      ...(result?.reason ? { reason: result.reason } : {}),
+      ...(escapedError ? { error: escapedError } : {}),
     });
   }
 }
@@ -364,11 +381,21 @@ async function executeTool(name: string, args: Record<string, unknown>, context:
     if (!ref) return errorResult(name + " needs a ref from the latest observation");
     perceived = findRef(before, ref);
     if (!perceived) return errorResult("Unknown ref " + ref + "; re-observe and choose a current ref. Do not guess.");
-    descriptor = await captureDescriptorForRef(context.surface, ref, before) ?? undefined;
+    try {
+      descriptor = await captureDescriptorForRef(context.surface, ref, before) ?? undefined;
+    } catch (error) {
+      if (isSurfaceGoneError(error)) throw error;
+      return errorResult("Could not capture ref " + ref + ": " + (error instanceof Error ? error.message : String(error)));
+    }
     if (!descriptor) return errorResult("Could not capture ref " + ref + "; re-observe and choose a current ref.");
   }
 
-  const action = buildAction(name, args, descriptor, context.resolveTemplateValue);
+  let action: ReturnType<typeof buildAction>;
+  try {
+    action = buildAction(name, args, descriptor, context.resolveTemplateValue);
+  } catch (error) {
+    return errorResult(error instanceof Error ? error.message : String(error));
+  }
   if (!action.ok) return errorResult(action.message);
   const resolvedUrl = action.value.type === "navigate" ? action.value.url : await context.surface.url();
   const risk = classifyRisk(action.value, perceived?.name);
@@ -384,6 +411,10 @@ async function executeTool(name: string, args: Record<string, unknown>, context:
       await context.surface.act(action.value, { risk, mode: "discovery" });
     }
   } catch (error) {
+    // The console's Stop button closes the browser under the run and relies on the failure
+    // escaping this loop; feeding it back to the model would keep spending model calls
+    // against a dead page until maxSteps.
+    if (isSurfaceGoneError(error)) throw error;
     return errorResult(error instanceof Error ? error.message : String(error));
   }
 
@@ -516,7 +547,9 @@ function resolveTemplateValue(value: string, declaredInputs: Map<string, ParamSp
   for (const match of value.matchAll(inputReference)) {
     const name = match[1];
     if (!declaredInputs.has(name)) throw new Error("Input " + name + " must be declared before it is used");
-    if (inputs[name] === undefined || inputs[name] === null) throw new Error("No supplied value exists for input " + name);
+    if (inputs[name] === undefined || inputs[name] === null) {
+      throw new Error("No supplied value exists for input " + name + "; type a literal example value instead, or request human help to obtain one");
+    }
   }
   let resolved = value.replace(inputReference, (_whole, name: string) => String(inputs[name]));
   resolved = resolved.replace(secretReference, (_whole, name: string) => {
@@ -537,4 +570,9 @@ function stringArg(args: Record<string, unknown>, key: string): string {
 
 function errorResult(message: string): ExecutionResult {
   return { result: { ok: false, error: message } };
+}
+
+function isSurfaceGoneError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /has been closed|browser has been disconnected|target closed/i.test(message);
 }

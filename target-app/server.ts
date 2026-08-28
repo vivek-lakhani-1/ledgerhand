@@ -358,7 +358,8 @@ export { app };
 // Accepts an explicit port so tests can bind a dedicated one without mutating process.env
 // (which would race across parallel test files).
 export function startServer(port = Number(process.env.TARGET_APP_PORT ?? "4599")): ReturnType<typeof app.listen> {
-  return app.listen(port, () => {
+  return app.listen(port, (error?: Error) => {
+    if (error) throw error;
     console.log(`Ledgerhand target app listening on port ${port}`);
   });
 }

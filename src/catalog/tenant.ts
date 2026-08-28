@@ -23,13 +23,22 @@ export function resolveForTenant(capability: CapabilityValue, tenant?: string): 
     }) as CapabilityValue["steps"];
   }
 
-  const parsed = Capability.safeParse(merged);
+  return revalidateCapability(merged, "Tenant resolution");
+}
+
+/**
+ * The shared contract for any in-memory transformation of a capability: whatever a run is
+ * about to execute must re-pass the same schema and lint gates the artifact on disk passed.
+ * Tenant resolution and credential-profile application both go through here.
+ */
+export function revalidateCapability(candidate: unknown, contextLabel: string): CapabilityValue {
+  const parsed = Capability.safeParse(candidate);
   if (!parsed.success) {
-    throw new Error(`Tenant resolution produced an invalid capability: ${parsed.error.message}`);
+    throw new Error(`${contextLabel} produced an invalid capability: ${parsed.error.message}`);
   }
   const problems = lintCapability(parsed.data);
   if (problems.length > 0) {
-    throw new Error(`Tenant resolution produced a lint-invalid capability: ${problems.join("; ")}`);
+    throw new Error(`${contextLabel} produced a lint-invalid capability: ${problems.join("; ")}`);
   }
   return parsed.data;
 }

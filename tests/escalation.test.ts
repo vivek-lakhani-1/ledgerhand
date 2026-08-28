@@ -228,6 +228,30 @@ describe("live control transfer and resume", () => {
     }
   });
 
+  it("9b. time spent waiting on a human decision does not count against the run's wall clock", async () => {
+    const harness = await makeHarness();
+    // Two fast steps on the login page; the first pauses for approval. The capability's own
+    // wall clock (5 s) is shorter than the human's think time (7 s) - the automation budget
+    // bounds the automation, not the reviewer.
+    harness.capability.steps = harness.capability.steps.filter((step) => ["s1", "s2"].includes(step.id));
+    harness.capability.steps[0].risk = "irreversible";
+    harness.capability.successCheckpoint = { kind: "url_matches", pattern: "login" };
+    harness.capability.policy.timeoutMs = 5000;
+    try {
+      const runPromise = runWithEscalator(harness);
+      const intervention = await waitForIntervention(harness.operator);
+      expect(intervention.reason.code).toBe("RISKY_ACTION_APPROVAL");
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 7000));
+      await resolve(harness.operator, intervention.id, "approve");
+
+      const result = await runPromise;
+      // Without human-wait exclusion this fails TIMEOUT before s2 (elapsed > 5000ms).
+      expect(result.status).toBe("success");
+    } finally {
+      await dispose(harness);
+    }
+  }, 40000);
+
   it("10. aborting an approval gate leaves the irreversible action unperformed", async () => {
     const harness = await makeHarness({ createdSuccess: true, compactFlow: true });
     try {

@@ -110,6 +110,26 @@ describe("surface abstraction against the live legacy app", () => {
     await balanceHandle.dispose();
   });
 
+  it("resolves the form control inside a table cell when the target role is a control", async () => {
+    await session.page.setContent(`
+      <table>
+        <tr><th>Field</th><th>Value</th></tr>
+        <tr><td>Search by:</td><td><select name="searchBy"><option>Member Number</option><option>Name</option></select></td></tr>
+        <tr><td>Member number:</td><td><input name="q"></td></tr>
+      </table>
+    `);
+    const descriptor = TargetDescriptor.parse({
+      role: "combobox",
+      framePath: [],
+      strategies: [{ kind: "table_cell", rowMatch: "Search by:", columnHeader: "Value", confidence: 0.85, origin: "captured" }],
+    });
+
+    const resolved = await surface.resolve(descriptor);
+
+    expect(resolved?.strategy).toBe("table_cell");
+    expect(resolved ? await resolved.locator.evaluate((element) => element.tagName) : "").toBe("SELECT");
+  });
+
   it("refuses a coordinate descriptor after the viewport changes", async () => {
     const descriptor = TargetDescriptor.parse({
       role: "button",
