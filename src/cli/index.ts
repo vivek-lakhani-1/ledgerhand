@@ -84,7 +84,9 @@ program
     // Transfer"), which the risk heuristic reads as the transaction itself. Raising maxRisk is
     // an explicit operator decision per discovery run, never a default.
     const maxRisk = Risk.parse(options.maxRisk ?? "safe");
-    const policy = new PolicyEngine({ allowedOrigins: [entryOrigin], allowedPathPatterns: ["/**"], maxRisk }, { allowRisky: Boolean(options.operator) });
+    // Same discovery wall clock the console uses: the 2-minute policy default is sized for
+    // replay, and a live-site exploration with a model in the loop needs longer.
+    const policy = new PolicyEngine({ allowedOrigins: [entryOrigin], allowedPathPatterns: ["/**"], maxRisk, timeoutMs: 600_000 }, { allowRisky: Boolean(options.operator) });
     const session = await BrowserSession.launch({
       headless: true,
       viewport: { width: 1280, height: 900 },

@@ -357,7 +357,11 @@ export class RunHost {
     const policy = request.kind === "replay"
       ? new PolicyEngine(request.capability.policy)
       : new PolicyEngine(
-        { allowedOrigins: [new URL(request.entryUrl).origin], allowedPathPatterns: ["/**"] },
+        // Discovery gets its own wall clock: the policy default (2 min) is sized for a
+        // deterministic replay, and a live-site exploration with a model in the loop was
+        // dying on it mid-run. Ten minutes bounds a runaway loop without cutting off a
+        // legitimately slow first exploration.
+        { allowedOrigins: [new URL(request.entryUrl).origin], allowedPathPatterns: ["/**"], timeoutMs: 600_000 },
         { allowRisky: Boolean(request.operator) },
       );
 
