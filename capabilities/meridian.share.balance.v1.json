@@ -517,7 +517,7 @@
           "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}"
         }
       ],
-      "maxAttempts": 1,
+      "maxAttempts": 2,
       "thenRetryStep": true
     }
   ],
@@ -563,11 +563,11 @@
     "llmStepCount": 16
   },
   "stability": {
-    "runs": 7,
-    "successes": 5,
+    "runs": 9,
+    "successes": 7,
     "businessOutcomes": 1,
     "failures": 1,
-    "lastRunAt": "2026-08-27T21:15:45.774Z"
+    "lastRunAt": "2026-08-28T07:03:08.701Z"
   },
   "tenantOverrides": {}
 }

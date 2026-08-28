@@ -542,7 +542,7 @@
           "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/open-share"
         }
       ],
-      "maxAttempts": 1,
+      "maxAttempts": 2,
       "thenRetryStep": true
     }
   ],

@@ -364,7 +364,7 @@
           "url": "https://web-sample.interface-hiring.com/members?by=name&q={{inputs.lastName}}"
         }
       ],
-      "maxAttempts": 1,
+      "maxAttempts": 2,
       "thenRetryStep": true
     }
   ],

@@ -12,7 +12,10 @@
     "appVersion": "1.0",
     "tenant": "alpha",
     "entryUrl": "http://127.0.0.1:4599/t/alpha/msc/login",
-    "viewport": { "width": 1280, "height": 900 }
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    }
   },
   "inputs": [
     {
@@ -26,7 +29,10 @@
     }
   ],
   "outputs": [],
-  "secretsRequired": ["APP_USER", "APP_PASSWORD"],
+  "secretsRequired": [
+    "APP_USER",
+    "APP_PASSWORD"
+  ],
   "steps": [
     {
       "id": "s1",
@@ -37,7 +43,13 @@
           "role": "textbox",
           "framePath": [],
           "strategies": [
-            { "kind": "attribute", "attr": "name", "value": "u", "confidence": 0.98, "origin": "captured" }
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "u",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
           ],
           "description": "Operator ID field"
         },
@@ -50,7 +62,13 @@
           "role": "textbox",
           "framePath": [],
           "strategies": [
-            { "kind": "attribute", "attr": "name", "value": "p", "confidence": 0.98, "origin": "captured" }
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "p",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
           ],
           "description": "Operator password field"
         }
@@ -65,7 +83,13 @@
           "role": "textbox",
           "framePath": [],
           "strategies": [
-            { "kind": "attribute", "attr": "name", "value": "p", "confidence": 0.98, "origin": "captured" }
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "p",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
           ],
           "description": "Operator password field"
         },
@@ -79,7 +103,14 @@
           "name": "Sign On",
           "framePath": [],
           "strategies": [
-            { "kind": "aria", "role": "button", "name": "Sign On", "exact": true, "confidence": 0.99, "origin": "captured" }
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Sign On",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
           ],
           "description": "Sign On button"
         }
@@ -95,7 +126,14 @@
           "name": "Sign On",
           "framePath": [],
           "strategies": [
-            { "kind": "aria", "role": "button", "name": "Sign On", "exact": true, "confidence": 0.99, "origin": "captured" }
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Sign On",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
           ],
           "description": "Sign On button"
         }
@@ -105,9 +143,18 @@
         "target": {
           "role": "link",
           "name": "New Sub-Account",
-          "framePath": ["nav"],
+          "framePath": [
+            "nav"
+          ],
           "strategies": [
-            { "kind": "aria", "role": "link", "name": "New Sub-Account", "exact": true, "confidence": 0.99, "origin": "captured" }
+            {
+              "kind": "aria",
+              "role": "link",
+              "name": "New Sub-Account",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
           ],
           "description": "New Sub-Account navigation link"
         }
@@ -121,9 +168,18 @@
         "target": {
           "role": "link",
           "name": "New Sub-Account",
-          "framePath": ["nav"],
+          "framePath": [
+            "nav"
+          ],
           "strategies": [
-            { "kind": "aria", "role": "link", "name": "New Sub-Account", "exact": true, "confidence": 0.99, "origin": "captured" }
+            {
+              "kind": "aria",
+              "role": "link",
+              "name": "New Sub-Account",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
           ],
           "description": "New Sub-Account navigation link"
         }
@@ -132,9 +188,17 @@
         "kind": "control_present",
         "target": {
           "role": "combobox",
-          "framePath": ["content"],
+          "framePath": [
+            "content"
+          ],
           "strategies": [
-            { "kind": "attribute", "attr": "name", "value": "f1", "confidence": 0.98, "origin": "captured" }
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "f1",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
           ],
           "description": "Account type field"
         }
@@ -147,9 +211,17 @@
         "type": "select",
         "target": {
           "role": "combobox",
-          "framePath": ["content"],
+          "framePath": [
+            "content"
+          ],
           "strategies": [
-            { "kind": "attribute", "attr": "name", "value": "f1", "confidence": 0.98, "origin": "captured" }
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "f1",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
           ],
           "description": "Account type field"
         },
@@ -159,9 +231,17 @@
         "kind": "control_present",
         "target": {
           "role": "textbox",
-          "framePath": ["content"],
+          "framePath": [
+            "content"
+          ],
           "strategies": [
-            { "kind": "attribute", "attr": "name", "value": "f2", "confidence": 0.98, "origin": "captured" }
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "f2",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
           ],
           "description": "Initial deposit field"
         }
@@ -174,9 +254,17 @@
         "type": "type",
         "target": {
           "role": "textbox",
-          "framePath": ["content"],
+          "framePath": [
+            "content"
+          ],
           "strategies": [
-            { "kind": "attribute", "attr": "name", "value": "f2", "confidence": 0.98, "origin": "captured" }
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "f2",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
           ],
           "description": "Initial deposit field"
         },
@@ -187,9 +275,17 @@
         "kind": "control_present",
         "target": {
           "role": "textbox",
-          "framePath": ["content"],
+          "framePath": [
+            "content"
+          ],
           "strategies": [
-            { "kind": "attribute", "attr": "name", "value": "f3", "confidence": 0.98, "origin": "captured" }
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "f3",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
           ],
           "description": "Purpose field"
         }
@@ -202,9 +298,17 @@
         "type": "type",
         "target": {
           "role": "textbox",
-          "framePath": ["content"],
+          "framePath": [
+            "content"
+          ],
           "strategies": [
-            { "kind": "attribute", "attr": "name", "value": "f3", "confidence": 0.98, "origin": "captured" }
+            {
+              "kind": "attribute",
+              "attr": "name",
+              "value": "f3",
+              "confidence": 0.98,
+              "origin": "captured"
+            }
           ],
           "description": "Purpose field"
         },
@@ -216,9 +320,18 @@
         "target": {
           "role": "button",
           "name": "Review",
-          "framePath": ["content"],
+          "framePath": [
+            "content"
+          ],
           "strategies": [
-            { "kind": "aria", "role": "button", "name": "Review", "exact": true, "confidence": 0.99, "origin": "captured" }
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Review",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
           ],
           "description": "Review sub-account button"
         }
@@ -232,14 +345,30 @@
         "target": {
           "role": "button",
           "name": "Review",
-          "framePath": ["content"],
+          "framePath": [
+            "content"
+          ],
           "strategies": [
-            { "kind": "aria", "role": "button", "name": "Review", "exact": true, "confidence": 0.99, "origin": "captured" }
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Review",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
           ],
           "description": "Review sub-account button"
         }
       },
-      "postcondition": { "kind": "text_present", "text": "Review New Sub-Account", "match": "contains", "framePath": ["content"] }
+      "postcondition": {
+        "kind": "text_present",
+        "text": "Review New Sub-Account",
+        "match": "contains",
+        "framePath": [
+          "content"
+        ]
+      }
     },
     {
       "id": "s9",
@@ -249,37 +378,74 @@
         "target": {
           "role": "button",
           "name": "Confirm",
-          "framePath": ["content"],
+          "framePath": [
+            "content"
+          ],
           "strategies": [
-            { "kind": "aria", "role": "button", "name": "Confirm", "exact": true, "confidence": 0.99, "origin": "captured" }
+            {
+              "kind": "aria",
+              "role": "button",
+              "name": "Confirm",
+              "exact": true,
+              "confidence": 0.99,
+              "origin": "captured"
+            }
           ],
           "description": "Irreversible Confirm button"
         }
       },
       "risk": "irreversible",
       "onFailure": "escalate",
-      "postcondition": { "kind": "text_present", "text": "SUB-ACCOUNT CREATED", "match": "contains", "framePath": ["content"] }
+      "postcondition": {
+        "kind": "text_present",
+        "text": "SUB-ACCOUNT CREATED",
+        "match": "contains",
+        "framePath": [
+          "content"
+        ]
+      }
     }
   ],
   "outcomes": [
     {
       "code": "MEMBER_NOT_FOUND",
       "description": "No member record was found for the requested member ID.",
-      "detect": { "kind": "text_present", "text": "No member record found", "match": "contains", "framePath": ["content"] },
+      "detect": {
+        "kind": "text_present",
+        "text": "No member record found",
+        "match": "contains",
+        "framePath": [
+          "content"
+        ]
+      },
       "terminal": true,
       "outputs": []
     },
     {
       "code": "PERMISSION_DENIED",
       "description": "The operator is not authorized to view the member account.",
-      "detect": { "kind": "text_present", "text": "not authorized to view", "match": "contains", "framePath": ["content"] },
+      "detect": {
+        "kind": "text_present",
+        "text": "not authorized to view",
+        "match": "contains",
+        "framePath": [
+          "content"
+        ]
+      },
       "terminal": true,
       "outputs": []
     },
     {
       "code": "VALIDATION_ERROR",
       "description": "The target application rejected the submitted form value.",
-      "detect": { "kind": "text_present", "text": "must be at least", "match": "contains", "framePath": ["content"] },
+      "detect": {
+        "kind": "text_present",
+        "text": "must be at least",
+        "match": "contains",
+        "framePath": [
+          "content"
+        ]
+      },
       "terminal": true,
       "outputs": [
         {
@@ -292,9 +458,16 @@
             "kind": "text_of",
             "target": {
               "role": "cell",
-              "framePath": ["content"],
+              "framePath": [
+                "content"
+              ],
               "strategies": [
-                { "kind": "css", "selector": "table[bgcolor=\"#fff4f4\"] td", "confidence": 0.8, "origin": "derived" }
+                {
+                  "kind": "css",
+                  "selector": "table[bgcolor=\"#fff4f4\"] td",
+                  "confidence": 0.8,
+                  "origin": "derived"
+                }
               ],
               "description": "Application validation message"
             },
@@ -305,13 +478,35 @@
     }
   ],
   "recoveries": [],
-  "successCheckpoint": { "kind": "text_present", "text": "SUB-ACCOUNT CREATED", "match": "contains", "framePath": ["content"] },
+  "successCheckpoint": {
+    "kind": "text_present",
+    "text": "SUB-ACCOUNT CREATED",
+    "match": "contains",
+    "framePath": [
+      "content"
+    ]
+  },
   "policy": {
-    "allowedOrigins": ["http://127.0.0.1:4599"],
-    "allowedPathPatterns": ["/**"],
-    "allowedActions": ["navigate", "click", "type", "select", "press", "wait", "extract", "assert"],
+    "allowedOrigins": [
+      "http://127.0.0.1:4599"
+    ],
+    "allowedPathPatterns": [
+      "/**"
+    ],
+    "allowedActions": [
+      "navigate",
+      "click",
+      "type",
+      "select",
+      "press",
+      "wait",
+      "extract",
+      "assert"
+    ],
     "maxRisk": "irreversible",
-    "requireApprovalFor": ["irreversible"],
+    "requireApprovalFor": [
+      "irreversible"
+    ],
     "maxSteps": 20,
     "timeoutMs": 120000
   },
@@ -320,9 +515,18 @@
     "goal": "Open a new sub-account through review",
     "model": "hand-written-phase-4-fixture",
     "discoveryRunId": "fixture_phase_4",
-    "surfaceSignature": { "browser": "chromium", "surface": "legacy-web" },
+    "surfaceSignature": {
+      "browser": "chromium",
+      "surface": "legacy-web"
+    },
     "llmStepCount": 0
   },
-  "stability": { "runs": 0, "successes": 0, "businessOutcomes": 0, "failures": 0, "lastRunAt": null },
+  "stability": {
+    "runs": 12,
+    "successes": 5,
+    "businessOutcomes": 0,
+    "failures": 7,
+    "lastRunAt": "2026-08-28T03:50:30.345Z"
+  },
   "tenantOverrides": {}
 }

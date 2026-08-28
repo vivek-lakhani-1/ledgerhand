@@ -609,7 +609,7 @@
           "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/transfer"
         }
       ],
-      "maxAttempts": 1,
+      "maxAttempts": 2,
       "thenRetryStep": true
     }
   ],
@@ -653,11 +653,11 @@
     "llmStepCount": 0
   },
   "stability": {
-    "runs": 5,
-    "successes": 1,
+    "runs": 7,
+    "successes": 3,
     "businessOutcomes": 3,
     "failures": 1,
-    "lastRunAt": "2026-08-27T20:32:53.327Z"
+    "lastRunAt": "2026-08-28T04:50:17.867Z"
   },
   "tenantOverrides": {}
 }

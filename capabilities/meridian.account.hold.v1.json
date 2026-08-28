@@ -503,7 +503,7 @@
           "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}/hold"
         }
       ],
-      "maxAttempts": 1,
+      "maxAttempts": 2,
       "thenRetryStep": true
     }
   ],
@@ -549,11 +549,11 @@
     "llmStepCount": 0
   },
   "stability": {
-    "runs": 1,
+    "runs": 11,
     "successes": 0,
     "businessOutcomes": 0,
-    "failures": 1,
-    "lastRunAt": "2026-08-27T17:55:41.463Z"
+    "failures": 11,
+    "lastRunAt": "2026-08-28T05:50:09.853Z"
   },
   "tenantOverrides": {}
 }
