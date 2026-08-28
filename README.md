@@ -54,32 +54,65 @@ ledgerhand app --port 4599      # terminal 1
 ledgerhand console --port 4620  # terminal 2
 ```
 
-Open <http://127.0.0.1:4620>. The left column picks what to run; the right column is the live view:
+Open <http://127.0.0.1:4620>. The console presents one concept — **Automation** — over the
+existing Discovery/Replay machinery. The workflow is: choose where Ledgerhand may work, tell it
+what you want done, and it handles the rest safely.
 
-- **Live frame** — a screenshot of the automated browser, refreshed about once a second, and held
-  on the last frame when a run ends so a failing page stays on screen instead of going blank.
-- **Timeline** — every event the run emits, as it emits it. Rows expand to the raw JSON, and the
-  ones that explain a failure expand themselves: a denied `policy.decision`, a `checkpoint.evaluated`
-  that came back false, a step that ended `✗`. Turn off **Verbose** to hide the per-action
-  mechanics and leave just the step narrative.
-- **Result** — the same verdict the CLI prints, including expected/observed on a failure, the exit
-  code, and the evidence directory.
+**Target System** — a searchable, single-select list of configured systems (`config/targets.json`,
+~15 presets across banking, insurance, healthcare, logistics, …), each showing how many approved
+automations the catalog actually holds for it. One run is locked to one target's origin: the
+allowlist below the model is derived from the selection, and pasting an entry URL auto-selects the
+matching preset (an unknown URL becomes an in-memory Custom Target scoped to that origin alone).
+A target appearing in the list never implies an automation exists for it — the counts say that.
 
-Events reach the page through the same `RunLogger` the log file uses, after redaction, so the panel
-can never show a secret the log would have masked.
+**Automation Mode** — `Automatic` (default): search the approved catalog for the task; a strong
+match runs deterministic Replay, no match starts Discovery, and an existing similar draft is
+offered for review instead of silently rediscovering. `Replay Only`: approved automations only —
+if none matches, the console says so and Discovery is a separate, optional button. `Discover
+Only`: always explore and record a new draft.
 
-The **Discover** tab runs the model against a goal instead of replaying an artifact, and the
-timeline shows the model's stated reason for each action it takes. It spends API credits per step,
-so it has a step cap and a **Stop** button that ends the run immediately — including a run parked
-on an escalation.
+**Chat** is the front door: describe the task, and Ledgerhand reports whether it already knows it
+("I found an existing automation: `meridian.member.balance`. Running it now.") or offers
+Discovery. The chat's tool catalog is scoped to the selected target, and it uses the same
+guardrailed invoke path as every other caller. **Manual Run** (compact button, top left) swaps
+only the left panel for advanced controls — goal, typed inputs, credential profile, entry URL,
+fault injection, step limits — while the live stage and steps stay visible; "← Back to Chat"
+restores the default view.
+
+The center stage shows the live browser frame (refreshed about once a second, held on the last
+frame when a run ends), plain-language run statuses (`PREPARING`, `REPLAYING`, `APPROVAL
+REQUIRED`, `HUMAN HELP REQUIRED`, `SUCCESS`, …), and an execution badge making the architecture
+visible: `Deterministic Replay — AI not used` during replay, `AI exploring (Discovery)` during
+discovery. The right column is the technical timeline: every event as it is emitted, expandable to
+raw JSON, with **Verbose** revealing per-action mechanics. Events reach the page through the same
+`RunLogger` the log file uses, after redaction, so the panel can never show a secret the log would
+have masked.
+
+Four questions stay separate in the UI, and in the state model underneath:
+
+1. **Target** — where is Ledgerhand allowed to operate? (the selected system, one per run)
+2. **Knowledge** — does an approved automation for the task exist? (`AUTOMATION FOUND` vs
+   `NEW AUTOMATION REQUIRED`)
+3. **Permission** — can the signed-in account complete it? A permission wall hit mid-Replay
+   pauses the run with a `PERMISSION REQUIRED` card: Ledgerhand never switches to a
+   higher-privilege account on its own; the card links to the Operator Console for human
+   takeover of the same live browser session.
+4. **Approval** — an irreversible step (where the artifact requires it) pauses the run *before*
+   acting, with a prominent `APPROVAL REQUIRED` card — member, share, inputs, and
+   `Approve and Continue` / `Cancel` — right in the main console.
+
+Discovery ends in `DISCOVERY COMPLETE — Review Required`, never in a runnable automation: the
+**Review Automation** overlay shows exactly what Replay would execute (steps, checkpoints,
+credential env-var *names*), and only an explicit **Approve** promotes the draft. Drafts are
+refused by every invocation surface — chat, the runs API, and the catalog API alike.
+
+**Credential profiles** (per target, in the plan card) select which env-var *names* a run reads —
+e.g. Meridian's "Teller (teller1)" vs "Supervisor (super1)" — so the supervisor-wall demo needs no
+`.env` editing. The mapping is name→name, chosen explicitly before the run, recorded in evidence,
+and never changed mid-run.
 
 Everything below still works from the CLI, and the CLI remains the scriptable path with meaningful
 exit codes.
-
-The **Chat** tab is a thin conversational front door over the capability API: type a request in
-plain language, the model picks a capability from the catalog and invokes it, and each invocation
-appears as a chip that jumps to its live run. It uses the same guardrailed invoke path as every
-other caller, so it cannot reach anything the API would refuse.
 
 ## MERIDIAN CORE: the hosted adaptation target
 
@@ -92,8 +125,8 @@ took is in [ADAPTATION.md](ADAPTATION.md).
 Sign-on-based capabilities take an optional `branch` input (`MAIN-001`, `WEST-014`, `EAST-022`;
 defaults to `MAIN-001`) and prove the chosen branch in the session's status bar. Discovery against
 Meridian names its credential env vars per run — `--secret MERIDIAN_OPERATOR --secret
-MERIDIAN_PASSWORD` on the CLI, or the "Credential env vars" field in the console's Discover form,
-which switches to the Meridian pair automatically for Meridian entry URLs.
+MERIDIAN_PASSWORD` on the CLI; in the console the selected target supplies its own credential
+env-var names (`config/targets.json`), overridable under Manual Run → Advanced.
 
 The function surface is covered by these artifacts:
 
@@ -170,6 +203,11 @@ below, or run the commands as they are. Seed members: 100234, 100987, 101555, 10
 
    Expected: the supervisor run pauses at `Apply Hold` and prints an operator URL; approve
    there and it finishes `SUCCESS` with a confirmation number.
+
+   In the console the same two paths need no env editing: plan *"Put a fraud hold on member
+   100987"* on Meridian Core, pick the **Teller (teller1)** credential profile to hit the
+   supervisor wall (`PERMISSION REQUIRED` → Operator Console), or **Supervisor (super1)** to
+   reach the `APPROVAL REQUIRED` card and approve the post from the main console.
 
 6. The capability API (the console must be running):
 

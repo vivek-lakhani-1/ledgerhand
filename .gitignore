@@ -14,3 +14,7 @@ evidence/runs/discover-*
 .DS_Store
 # Generated documentation; rebuild rather than commit.
 *.pdf
+# Demo-prep discovery notes — local planning scratch, not a deliverable.
+meridian-demo-discovery/
+# Local demo test-script cheat sheet, not a deliverable.
+test.txt
