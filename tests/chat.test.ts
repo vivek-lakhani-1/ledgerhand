@@ -104,6 +104,48 @@ describe("a chat turn over the capability catalog", () => {
     expect(turn.invocations).toHaveLength(2);
     expect(turn.reply).toMatch(/maximum number of runs/);
   });
+
+  it("offers start_discovery as a tool and fires it without blocking on the run", async () => {
+    const model = new PlaybackModel([
+      [{ type: "tool_use", id: "t1", name: "start_discovery", input: { goal: "Read the fraud review setting" } }],
+      [{ type: "text", text: "Discovery started — watch the stage. The result will be a draft for your review." }],
+    ]);
+    const started: string[] = [];
+    const turn = await runChatTurn({
+      messages: [{ role: "user", content: "Yes, explore it" }],
+      tools: tools as never,
+      model,
+      context: { targetName: "ClaimsDesk Legacy", targetOrigin: "https://claims.claimsdesk.example", mode: "automatic" },
+      startDiscovery: (goal) => {
+        started.push(goal);
+        return { runId: "discover-1" };
+      },
+      invoke: async () => { throw new Error("no capability should be invoked"); },
+    });
+    expect(started).toEqual(["Read the fraud review setting"]);
+    expect(turn.invocations).toEqual([
+      { capability: "discovery", inputs: { goal: "Read the fraud review setting" }, runId: "discover-1", status: "discovering" },
+    ]);
+    // The model was told what it can and cannot claim: the target, and the draft lifecycle.
+    expect(model.seen[0].tools.map((tool) => tool.name)).toContain("start_discovery");
+    expect(model.seen[0].system).toContain("ClaimsDesk Legacy");
+    expect(model.seen[0].system).toMatch(/draft/i);
+    expect(JSON.stringify(model.seen[1].messages.at(-1))).toContain("human review");
+  });
+
+  it("never offers discovery in Replay Only mode", async () => {
+    const model = new PlaybackModel([[{ type: "text", text: "No approved automation exists for that task." }]]);
+    await runChatTurn({
+      messages: [{ role: "user", content: "Read the fraud review setting" }],
+      tools: tools as never,
+      model,
+      context: { targetName: "Meridian Core", mode: "replay_only" },
+      invoke: async () => ({ runId: "", result: null, error: "unused" }),
+    });
+    expect(model.seen[0].tools.map((tool) => tool.name)).not.toContain("start_discovery");
+    expect(model.seen[0].system).toMatch(/Replay Only/);
+    expect(model.seen[0].system).toMatch(/never offer to explore/i);
+  });
 });
 
 describe("the chat route", () => {
@@ -162,5 +204,133 @@ describe("the chat route", () => {
     expect(json.reply).toBe("Hello from the catalog.");
     expect(json.messages).toHaveLength(2);
     expect(json.invocations).toEqual([]);
+  });
+
+  it("scopes the tool catalog to the selected target", async () => {
+    const models: PlaybackModel[] = [];
+    await server.close();
+    server = await startConsoleServer({
+      port: 0,
+      capabilitiesDir,
+      chatModel: () => {
+        const model = new PlaybackModel([[{ type: "text", text: "ok" }]]);
+        models.push(model);
+        return model;
+      },
+    });
+    // The catalog holds one local-app capability. On the local target it is offered; on
+    // Meridian the tool list is empty - one conversation cannot reach across targets.
+    await postChat({ messages: [{ role: "user", content: "hi" }], targetId: "local-app" });
+    const localTools = models[0].seen[0].tools.map((tool) => tool.name);
+    expect(localTools).toContain("member__savings_balance__lookup");
+    await postChat({ messages: [{ role: "user", content: "hi" }], targetId: "meridian" });
+    const meridianTools = models[1].seen[0].tools.filter((tool) => tool.name !== "start_discovery");
+    expect(meridianTools).toEqual([]);
+    // A custom target (named by URL, not preset id) is scoped the same way: an unknown origin
+    // gets no capability tools, only discovery.
+    await postChat({ messages: [{ role: "user", content: "hi" }], entryUrl: "https://legacy.example.com/login" });
+    const customToolNames = models[2].seen[0].tools.map((tool) => tool.name);
+    expect(customToolNames).toEqual(["start_discovery"]);
+    expect(models[2].seen[0].system).toContain("Custom Target");
+  });
+
+  it("fails closed when a named target cannot be resolved, instead of unscoping to the whole catalog", async () => {
+    expect((await postChat({ messages: [{ role: "user", content: "hi" }], targetId: "stale-id" })).status).toBe(400);
+  });
+
+  it("offers no replay tools at all in Discover Only mode", async () => {
+    const models: PlaybackModel[] = [];
+    await server.close();
+    server = await startConsoleServer({
+      port: 0,
+      capabilitiesDir,
+      chatModel: () => {
+        const model = new PlaybackModel([[{ type: "text", text: "ok" }]]);
+        models.push(model);
+        return model;
+      },
+    });
+    await postChat({ messages: [{ role: "user", content: "look up a balance" }], targetId: "local-app", mode: "discover_only" });
+    expect(models[0].seen[0].tools.map((tool) => tool.name)).toEqual(["start_discovery"]);
+    expect(models[0].seen[0].system).toMatch(/Discover Only/);
+  });
+
+  it("refuses to invoke a capability that is not on the selected target, even if the model names it", async () => {
+    // The catalog only holds a local-app capability; scoping to Meridian removes its tool,
+    // but a transcript-primed model could still emit the name - the invoke callback is the gate.
+    await server.close();
+    server = await startConsoleServer({
+      port: 0,
+      capabilitiesDir,
+      chatModel: () => new PlaybackModel([
+        [{ type: "tool_use", id: "t1", name: "member__savings_balance__lookup", input: { memberId: "10001" } }],
+        [{ type: "text", text: "That automation is not on this target." }],
+      ]),
+    });
+    const { status, json } = await postChat({ messages: [{ role: "user", content: "balance" }], targetId: "meridian" });
+    expect(status).toBe(200);
+    expect(json.invocations[0].status).toBe("errored");
+    expect(JSON.stringify(json.messages)).toContain("does not operate on the selected target");
+  });
+
+  it("reports an existing similar draft instead of silently rediscovering", async () => {
+    fs.copyFileSync(
+      path.join(process.cwd(), "capabilities", "member-savings-balance.discovered.v1.json"),
+      path.join(capabilitiesDir, "member-savings-balance.discovered.v1.json"),
+    );
+    try {
+      const startedRequests: unknown[] = [];
+      const fakeHost = { startDiscovery(request: unknown) { startedRequests.push(request); return { runId: "discover-x" }; } };
+      await server.close();
+      server = await startConsoleServer({
+        port: 0,
+        capabilitiesDir,
+        host: fakeHost as unknown as RunHost,
+        chatModel: () => new PlaybackModel([
+          [{ type: "tool_use", id: "t1", name: "start_discovery", input: { goal: "Look up a member's savings balance" } }],
+          [{ type: "text", text: "A draft already covers this." }],
+        ]),
+      });
+      const { json } = await postChat({ messages: [{ role: "user", content: "explore it" }], targetId: "local-app" });
+      expect(startedRequests).toHaveLength(0);
+      expect(json.invocations).toEqual([]);
+      expect(JSON.stringify(json.messages)).toContain("draft_exists");
+    } finally {
+      fs.rmSync(path.join(capabilitiesDir, "member-savings-balance.discovered.v1.json"), { force: true });
+    }
+  });
+
+  it("starts a discovery run through the host when the model calls start_discovery", async () => {
+    const startedRequests: any[] = [];
+    const fakeHost = {
+      startDiscovery(request: unknown) {
+        startedRequests.push(request);
+        return { runId: "discover-chat-1" };
+      },
+    };
+    await server.close();
+    server = await startConsoleServer({
+      port: 0,
+      capabilitiesDir,
+      host: fakeHost as unknown as RunHost,
+      chatModel: () => new PlaybackModel([
+        [{ type: "tool_use", id: "t1", name: "start_discovery", input: { goal: "Learn the fraud setting" } }],
+        [{ type: "text", text: "Discovery started." }],
+      ]),
+    });
+    const { status, json } = await postChat({
+      messages: [{ role: "user", content: "yes, explore" }],
+      targetId: "meridian",
+      mode: "automatic",
+    });
+    expect(status).toBe(200);
+    expect(json.invocations).toEqual([
+      { capability: "discovery", inputs: { goal: "Learn the fraud setting" }, runId: "discover-chat-1", status: "discovering" },
+    ]);
+    expect(startedRequests[0]).toMatchObject({
+      goal: "Learn the fraud setting",
+      entryUrl: "https://web-sample.interface-hiring.com/signon",
+      secretNames: ["MERIDIAN_OPERATOR", "MERIDIAN_PASSWORD"],
+    });
   });
 });

@@ -6,10 +6,32 @@ import type { Server } from "node:http";
 import { injectionModes } from "../../target-app/inject.js";
 import { capabilityNameForTool, loadCatalog } from "../catalog/catalog.js";
 import { AnthropicModelClient, type ModelClient } from "../discover/model.js";
-import { Capability, type Capability as CapabilityValue, type ReplayResult } from "../schema/index.js";
-import { lintCapability } from "../schema/lint.js";
+import { InterventionNotFoundError, InterventionStateError } from "../escalation/intervention-store.js";
+import type { Capability as CapabilityValue, ReplayResult } from "../schema/index.js";
 import { runChatTurn } from "./chat.js";
+import {
+  findCapabilityByName,
+  listCapabilities,
+  listingFor,
+  originOf,
+  readCapability,
+  resolveWithin,
+} from "./listing.js";
+import { findSimilarDraft } from "./matcher.js";
+import { parseAutomationMode, planAutomation } from "./plan.js";
 import { RunHost } from "./run-host.js";
+import {
+  applyCredentialProfile,
+  capabilitiesForTarget,
+  detectTarget,
+  findTarget,
+  loadTargetsConfig,
+  summarizeTargets,
+  type ResolvedTarget,
+  type TargetsConfig,
+} from "./targets.js";
+
+export type { CapabilityListing } from "./listing.js";
 
 export type ConsoleServerOptions = {
   host?: RunHost;
@@ -20,6 +42,8 @@ export type ConsoleServerOptions = {
   evidenceDir?: string;
   /** Swapped in tests so a chat turn needs no API key and no network. */
   chatModel?: () => ModelClient;
+  /** The target-system presets file; defaults to config/targets.json under the working directory. */
+  targetsConfigPath?: string;
 };
 
 export type ConsoleServer = {
@@ -35,6 +59,17 @@ export function createConsoleApp(options: ConsoleServerOptions = {}): { app: Exp
   const capabilitiesDir = options.capabilitiesDir ?? path.join(process.cwd(), "capabilities");
   const targetAppUrl = options.targetAppUrl ?? `http://127.0.0.1:${process.env.TARGET_APP_PORT ?? "4599"}`;
   const evidenceDir = options.evidenceDir ?? path.join(process.cwd(), "evidence", "runs");
+  const targetsConfigPath = options.targetsConfigPath ?? path.join(process.cwd(), "config", "targets.json");
+  // Re-read per request like the catalog, so a config edit shows up without a restart. A
+  // missing or invalid file degrades to "no presets" instead of taking the console down.
+  const targetsConfig = (): TargetsConfig => {
+    try {
+      return loadTargetsConfig(targetsConfigPath);
+    } catch {
+      return { targets: [], customDefaults: { discoverySecretNames: ["APP_USER", "APP_PASSWORD"] } };
+    }
+  };
+  const modelAvailable = (): boolean => Boolean(process.env.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_AUTH_TOKEN);
   // The chat turns are short tool-picking exchanges; they do not need discovery's deep model.
   const chatModel = options.chatModel
     ?? (() => new AnthropicModelClient({ model: process.env.CHAT_MODEL ?? "claude-sonnet-5", effort: "medium" }));
@@ -61,6 +96,86 @@ export function createConsoleApp(options: ConsoleServerOptions = {}): { app: Exp
 
   app.get("/api/capabilities", (_req, res) => {
     res.json(listCapabilities(capabilitiesDir));
+  });
+
+  // The full artifact, for the human review that stands between a draft and approval.
+  app.get("/api/capabilities/:name", (req, res) => {
+    const found = findCapabilityByName(capabilitiesDir, req.params.name);
+    if (!found) {
+      res.status(404).json({ error: `Capability ${req.params.name} was not found in the catalog` });
+      return;
+    }
+    const file = path.basename(found.path);
+    res.json({ file, listing: listingFor(file, found.capability), capability: found.capability });
+  });
+
+  // Promotion is the one mutation the console performs on an artifact, and it flips exactly
+  // one field. Everything the reviewer approved - steps, policy, outcomes - stays byte-for-byte
+  // what discovery recorded.
+  app.post("/api/capabilities/:name/approve", (req, res) => {
+    const found = findCapabilityByName(capabilitiesDir, req.params.name);
+    if (!found) {
+      res.status(404).json({ error: `Capability ${req.params.name} was not found in the catalog` });
+      return;
+    }
+    if (found.capability.approval !== "draft") {
+      res.status(409).json({ error: `Capability ${req.params.name} is ${found.capability.approval}, not a draft awaiting review` });
+      return;
+    }
+    const raw = JSON.parse(fs.readFileSync(found.path, "utf8")) as Record<string, unknown>;
+    raw.approval = "approved";
+    fs.writeFileSync(found.path, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
+    const file = path.basename(found.path);
+    res.json(listingFor(file, readCapability(found.path)));
+  });
+
+  // The configured target systems, decorated with what the catalog actually knows about each.
+  // A target appearing here never implies an automation exists for it - the counts say that.
+  app.get("/api/targets", (_req, res) => {
+    res.json(summarizeTargets(targetsConfig().targets, listCapabilities(capabilitiesDir)));
+  });
+
+  // Resolves an entry URL to its target boundary: a configured preset when the origin matches,
+  // otherwise a custom target locked to that origin alone. The page uses this instead of
+  // carrying its own resolver, so client and server can never disagree about the boundary.
+  app.get("/api/targets/detect", (req, res) => {
+    const url = typeof req.query.url === "string" ? req.query.url : "";
+    const config = targetsConfig();
+    const target = url ? detectTarget(config.targets, url, config.customDefaults) : null;
+    if (!target) {
+      res.status(400).json({ error: "url must be an absolute URL" });
+      return;
+    }
+    res.json(target);
+  });
+
+  // The deciding step of the Automation flow: given a mode, target and goal, report whether
+  // Ledgerhand already knows the task, needs the user to choose, should offer an existing
+  // draft, or needs Discovery. It only plans - starting the run is a separate, explicit call.
+  app.post("/api/automation/plan", (req, res) => {
+    const mode = parseAutomationMode(req.body?.mode) ?? "automatic";
+    const goal = typeof req.body?.goal === "string" ? req.body.goal.trim() : "";
+    const capabilityName = typeof req.body?.capabilityName === "string" && req.body.capabilityName
+      ? req.body.capabilityName
+      : undefined;
+    if (!goal && !capabilityName) {
+      res.status(400).json({ error: "goal is required to plan an automation" });
+      return;
+    }
+    const resolved = resolveTargetForRequest(targetsConfig(), req.body);
+    if ("error" in resolved) {
+      res.status(400).json({ error: resolved.error });
+      return;
+    }
+    const decision = planAutomation({
+      mode,
+      goal,
+      target: resolved.target,
+      listings: listCapabilities(capabilitiesDir),
+      discoveryAvailable: modelAvailable(),
+      ...(capabilityName ? { capabilityName } : {}),
+    });
+    res.json({ mode, target: resolved.target, decision });
   });
 
   // The agent-facing surface. An agent picks a capability by name from the catalog, invokes it
@@ -111,16 +226,68 @@ export function createConsoleApp(options: ConsoleServerOptions = {}): { app: Exp
       res.status(400).json({ error: "messages is required and must be a non-empty array" });
       return;
     }
+    // The chat honors the same selection the rest of the console does: one target per run
+    // (preset id or custom entry URL, resolved by the same rule every other route uses), and
+    // a mode that decides whether the model may offer Discovery at all. Naming a target that
+    // cannot be resolved fails the request - never falls open to the whole catalog.
+    const chatMode = parseAutomationMode(req.body?.mode) ?? "automatic";
+    const namedTarget = Boolean(req.body?.targetId ?? req.body?.entryUrl);
+    const chatResolved = namedTarget ? resolveTargetForRequest(targetsConfig(), req.body) : null;
+    if (chatResolved && "error" in chatResolved) {
+      res.status(400).json({ error: chatResolved.error });
+      return;
+    }
+    const chatTarget = chatResolved?.target ?? null;
+    let tools = loadCatalog(capabilitiesDir).toToolSchemas();
+    if (chatTarget) {
+      const allowed = new Set(
+        capabilitiesForTarget(listCapabilities(capabilitiesDir), chatTarget).map((listing) => listing.name),
+      );
+      tools = tools.filter((tool) => allowed.has(capabilityNameForTool(tool.name)));
+    }
+    // Discover Only means exactly that: no replay tools at all, only exploration.
+    if (chatMode === "discover_only") tools = [];
     try {
       const turn = await runChatTurn({
         messages,
-        tools: loadCatalog(capabilitiesDir).toToolSchemas(),
+        tools,
         model: chatModel(),
+        context: {
+          mode: chatMode,
+          ...(chatTarget ? { targetName: chatTarget.name, targetOrigin: chatTarget.origin } : {}),
+        },
+        ...(chatTarget && chatMode !== "replay_only" && modelAvailable()
+          ? {
+            startDiscovery: (goal: string) => {
+              // The same duplicate-draft rule the plan endpoint enforces: an existing
+              // similar draft is offered for review, never silently rediscovered.
+              const drafts = capabilitiesForTarget(listCapabilities(capabilitiesDir), chatTarget)
+                .filter((listing) => listing.approval === "draft");
+              const similar = findSimilarDraft(goal, drafts);
+              if (similar) {
+                return { existingDraft: { name: similar.listing.name, title: similar.listing.title } };
+              }
+              const started = host.startDiscovery({
+                goal,
+                entryUrl: chatTarget.entryUrl,
+                inputs: {},
+                maxSteps: 25,
+                secretNames: chatTarget.discoverySecretNames,
+              });
+              return { runId: started.runId };
+            },
+          }
+          : {}),
         invoke: async (toolName, inputs) => {
           const name = capabilityNameForTool(toolName);
           const found = findCapabilityByName(capabilitiesDir, name);
           if (!found || found.capability.approval === "draft") {
             return { runId: "", result: null, error: `Capability ${name} is not invocable` };
+          }
+          // The tool-list filter is advisory (a transcript can re-prime an old tool name);
+          // the boundary is enforced here, where the run would actually start.
+          if (chatTarget && originOf(found.capability.target.entryUrl) !== chatTarget.origin) {
+            return { runId: "", result: null, error: `Capability ${name} does not operate on the selected target ${chatTarget.name}` };
           }
           return invokeCapability(host, found, inputs, {});
         },
@@ -135,24 +302,30 @@ export function createConsoleApp(options: ConsoleServerOptions = {}): { app: Exp
     const kind = req.body?.kind === "discovery" ? "discovery" : "replay";
     const inputs = isRecord(req.body?.inputs) ? req.body.inputs : {};
     const operator = req.body?.operator === true;
+    const targetId = typeof req.body?.targetId === "string" && req.body.targetId ? req.body.targetId : undefined;
 
     if (kind === "discovery") {
-      if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
+      if (!modelAvailable()) {
         res.status(400).json({ error: "ANTHROPIC_API_KEY is not set, so discovery cannot run." });
         return;
       }
       const goal = typeof req.body?.goal === "string" ? req.body.goal.trim() : "";
-      const entryUrl = typeof req.body?.entryUrl === "string" ? req.body.entryUrl.trim() : "";
-      if (!goal || !entryUrl) {
-        res.status(400).json({ error: "goal and entryUrl are required for a discovery run" });
+      if (!goal) {
+        res.status(400).json({ error: "goal and entryUrl (or a targetId) are required for a discovery run" });
         return;
       }
-      try {
-        new URL(entryUrl);
-      } catch {
-        res.status(400).json({ error: "entryUrl must be an absolute URL" });
+      // The same target-boundary rule as planning: preset id and/or entry URL resolve to one
+      // origin, and an entry URL off the selected target's origin is refused.
+      const resolved = resolveTargetForRequest(targetsConfig(), req.body);
+      if ("error" in resolved) {
+        res.status(400).json({
+          error: resolved.error === "targetId or entryUrl is required"
+            ? "goal and entryUrl (or a targetId) are required for a discovery run"
+            : resolved.error,
+        });
         return;
       }
+      const target = resolved.target;
       const maxSteps = Number(req.body?.maxSteps ?? 25);
       const secretNames = Array.isArray(req.body?.secretNames)
         ? req.body.secretNames.filter((name: unknown): name is string =>
@@ -160,11 +333,11 @@ export function createConsoleApp(options: ConsoleServerOptions = {}): { app: Exp
         : undefined;
       res.status(201).json(host.startDiscovery({
         goal,
-        entryUrl,
+        entryUrl: target.entryUrl,
         inputs,
         maxSteps: Number.isFinite(maxSteps) && maxSteps > 0 ? Math.min(Math.trunc(maxSteps), 60) : 25,
         operator,
-        secretNames: secretNames?.length ? secretNames : undefined,
+        secretNames: secretNames?.length ? secretNames : target.discoverySecretNames,
       }));
       return;
     }
@@ -183,6 +356,44 @@ export function createConsoleApp(options: ConsoleServerOptions = {}): { app: Exp
       res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
       return;
     }
+    // A draft is knowledge Ledgerhand recorded but no human has approved. Every invocation
+    // surface refuses it - including this one, which historically did not check.
+    if (capability.approval === "draft") {
+      res.status(403).json({ error: `Capability ${capability.name} is a draft. Review and approve it before running Replay.` });
+      return;
+    }
+    let credentialProfile: string | undefined;
+    const credentialProfileId = typeof req.body?.credentialProfileId === "string" && req.body.credentialProfileId
+      ? req.body.credentialProfileId
+      : undefined;
+    if (targetId) {
+      const target = findTarget(targetsConfig().targets, targetId);
+      if (!target) {
+        res.status(400).json({ error: `Target ${targetId} is not configured` });
+        return;
+      }
+      if (originOf(capability.target.entryUrl) !== target.origin) {
+        res.status(400).json({ error: `Capability ${capability.name} does not operate on the selected target ${target.name}` });
+        return;
+      }
+      if (credentialProfileId) {
+        const profile = target.credentialProfiles.find((candidate) => candidate.id === credentialProfileId);
+        if (!profile) {
+          res.status(400).json({ error: `Credential profile ${credentialProfileId} is not configured for ${target.name}` });
+          return;
+        }
+        try {
+          capability = applyCredentialProfile(capability, profile);
+        } catch (error) {
+          res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+          return;
+        }
+        credentialProfile = profile.label;
+      }
+    } else if (credentialProfileId) {
+      res.status(400).json({ error: "credentialProfileId requires a targetId" });
+      return;
+    }
     res.status(201).json(host.startReplay({
       capability,
       capabilityPath: resolvedPath,
@@ -190,6 +401,7 @@ export function createConsoleApp(options: ConsoleServerOptions = {}): { app: Exp
       tenant: typeof req.body?.tenant === "string" && req.body.tenant ? req.body.tenant : undefined,
       inject: typeof req.body?.inject === "string" && req.body.inject ? req.body.inject : undefined,
       operator,
+      ...(credentialProfile ? { credentialProfile } : {}),
     }));
   });
 
@@ -200,6 +412,43 @@ export function createConsoleApp(options: ConsoleServerOptions = {}): { app: Exp
     }
     const stopped = await host.stop(req.params.id);
     res.json({ stopped });
+  });
+
+  // The approval and human-help cards live in the main console; these routes let it read and
+  // resolve a paused run's interventions without the separate operator page. Only approve and
+  // abort are accepted here - resuming after a manual takeover stays an operator-console call.
+  app.get("/api/runs/:id/interventions", (req, res) => {
+    if (!host.get(req.params.id)) {
+      res.status(404).json({ error: "RUN_NOT_FOUND" });
+      return;
+    }
+    res.json(host.interventions(req.params.id));
+  });
+
+  app.post("/api/runs/:id/interventions/:interventionId/resolve", (req, res) => {
+    if (!host.get(req.params.id)) {
+      res.status(404).json({ error: "RUN_NOT_FOUND" });
+      return;
+    }
+    const decision = req.body?.decision;
+    if (decision !== "approve" && decision !== "abort") {
+      res.status(400).json({ error: "decision must be approve or abort" });
+      return;
+    }
+    const note = typeof req.body?.note === "string" ? req.body.note : undefined;
+    try {
+      res.json(host.resolveIntervention(req.params.id, req.params.interventionId, { decision, note }));
+    } catch (error) {
+      if (error instanceof InterventionStateError) {
+        res.status(409).json({ error: error.code, message: error.message });
+        return;
+      }
+      if (error instanceof InterventionNotFoundError) {
+        res.status(404).json({ error: error.code, message: error.message });
+        return;
+      }
+      res.status(404).json({ error: error instanceof Error ? error.message : String(error) });
+    }
   });
 
   // Live runs come from the host; everything older is rebuilt from the evidence directory, so
@@ -344,7 +593,9 @@ export async function startConsoleServer(options: ConsoleServerOptions = {}): Pr
   const { app } = createConsoleApp(options);
   const port = options.port ?? Number(process.env.CONSOLE_PORT ?? "4620");
   const server = await new Promise<Server>((resolve, reject) => {
-    const listener = app.listen(port, "127.0.0.1", () => resolve(listener));
+    // Express 5.1's listen callback is error-first; resolving unconditionally here once made a
+    // failed bind (port already taken) report success with a URL nothing was serving.
+    const listener = app.listen(port, "127.0.0.1", (error?: Error) => (error ? reject(error) : resolve(listener)));
     listener.on("error", reject);
   });
   const address = server.address();
@@ -358,53 +609,42 @@ export async function startConsoleServer(options: ConsoleServerOptions = {}): Pr
   };
 }
 
-export type CapabilityListing = {
-  file: string;
-  name: string;
-  title: string;
-  version: string;
-  approval: string;
-  description: string;
-  inputs: { name: string; required: boolean; example?: unknown; description?: string }[];
-  outputs: string[];
-  /** "base" plus every tenant the artifact declares an override for. */
-  tenants: string[];
-  stepCount: number;
-  hasIrreversibleStep: boolean;
-  entryUrl: string;
-};
+/**
+ * Resolves the target boundary a request names, either by preset id or by detecting it from
+ * an entry URL. When both are supplied they must agree; the entry URL may narrow the preset's
+ * default entry point but never move the run to another origin.
+ */
+function resolveTargetForRequest(
+  config: TargetsConfig,
+  body: unknown,
+): { target: ResolvedTarget } | { error: string } {
+  const request = isRecord(body) ? body : {};
+  const targetId = typeof request.targetId === "string" && request.targetId ? request.targetId : undefined;
+  const entryUrl = typeof request.entryUrl === "string" && request.entryUrl ? request.entryUrl.trim() : undefined;
 
-function listCapabilities(directory: string): CapabilityListing[] {
-  if (!fs.existsSync(directory)) return [];
-  const listings: CapabilityListing[] = [];
-  for (const entry of fs.readdirSync(directory)) {
-    if (!entry.endsWith(".json")) continue;
+  if (targetId) {
+    const target = findTarget(config.targets, targetId);
+    if (!target) return { error: `Target ${targetId} is not configured` };
+    if (!entryUrl) return { target };
+    let origin: string;
     try {
-      const capability = readCapability(path.join(directory, entry));
-      listings.push({
-        file: entry,
-        name: capability.name,
-        title: capability.title,
-        version: capability.version,
-        approval: capability.approval,
-        description: capability.description,
-        inputs: capability.inputs.map((input) => ({
-          name: input.name,
-          required: input.required,
-          example: input.example,
-          description: input.description,
-        })),
-        outputs: capability.outputs.map((output) => output.name),
-        tenants: ["base", ...Object.keys(capability.tenantOverrides ?? {})],
-        stepCount: capability.steps.length,
-        hasIrreversibleStep: capability.steps.some((step) => step.risk === "irreversible"),
-        entryUrl: capability.target.entryUrl,
-      });
+      origin = new URL(entryUrl).origin;
     } catch {
-      // A capability that no longer validates should not blank the whole list.
+      return { error: "entryUrl must be an absolute URL" };
     }
+    if (origin !== target.origin) {
+      return { error: `Entry URL ${entryUrl} is outside the selected target ${target.name} (${target.origin})` };
+    }
+    return { target: { ...target, entryUrl } };
   }
-  return listings.sort((a, b) => a.name.localeCompare(b.name));
+
+  if (entryUrl) {
+    const target = detectTarget(config.targets, entryUrl, config.customDefaults);
+    if (!target) return { error: "entryUrl must be an absolute URL" };
+    return { target: { ...target, entryUrl } };
+  }
+
+  return { error: "targetId or entryUrl is required" };
 }
 
 /** Resolves a run id to its evidence directory, refusing anything that is not a direct child. */
@@ -492,6 +732,8 @@ function readHistoryRun(evidenceDir: string, runId: string): (HistoryRun & { eve
     exitCode: null,
     operatorUrl: null,
     eventCount: events.length,
+    pendingIntervention: null,
+    credentialProfile: null,
     events,
   };
 }
@@ -530,38 +772,6 @@ async function invokeCapability(
     result: finished.result,
     error: finished.result ? null : finished.error ?? `Run ended with status ${finished.status} and no result`,
   };
-}
-
-/** Finds the artifact file whose capability name matches, since invocation is by name, not file. */
-function findCapabilityByName(directory: string, name: string): { capability: CapabilityValue; path: string } | null {
-  if (!fs.existsSync(directory)) return null;
-  for (const entry of fs.readdirSync(directory)) {
-    if (!entry.endsWith(".json")) continue;
-    const candidate = path.join(directory, entry);
-    try {
-      const capability = readCapability(candidate);
-      if (capability.name === name) return { capability, path: candidate };
-    } catch {
-      // Invalid artifacts are already surfaced by the listing; skip them here.
-    }
-  }
-  return null;
-}
-
-function readCapability(filename: string): CapabilityValue {
-  const parsed = Capability.safeParse(JSON.parse(fs.readFileSync(filename, "utf8")) as unknown);
-  if (!parsed.success) throw new Error(`Invalid capability ${path.basename(filename)}`);
-  const problems = lintCapability(parsed.data);
-  if (problems.length > 0) throw new Error(`Lint-invalid capability ${path.basename(filename)}: ${problems.join("; ")}`);
-  return parsed.data;
-}
-
-/** Keeps a request from reaching a file outside the capabilities directory. */
-function resolveWithin(directory: string, candidate: string): string {
-  const root = path.resolve(directory);
-  const resolved = path.resolve(root, path.basename(candidate));
-  if (!resolved.startsWith(`${root}${path.sep}`)) throw new Error("Capability path is outside the catalog");
-  return resolved;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

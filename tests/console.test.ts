@@ -44,6 +44,8 @@ class FakeHost {
       exitCode: null,
       operatorUrl: null,
       eventCount: 0,
+      pendingIntervention: null,
+      credentialProfile: null,
       ...overrides,
     };
     this.summaries.set(runId, summary);

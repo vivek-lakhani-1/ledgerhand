@@ -5,7 +5,7 @@ import { recordCapability, writeCapability } from "../discover/recorder.js";
 import { EvidenceDir } from "../evidence/evidence.js";
 import { RunLogger, type RunEvent } from "../evidence/logger.js";
 import { makeOperatorEscalator } from "../escalation/escalator.js";
-import { InterventionStore } from "../escalation/intervention-store.js";
+import { InterventionStateError, InterventionStore } from "../escalation/intervention-store.js";
 import { startOperatorServer } from "../escalation/operator-server.js";
 import { PolicyEngine } from "../policy/policy.js";
 import { Redactor } from "../policy/redact.js";
@@ -25,6 +25,8 @@ export type ReplayRunRequest = {
   tenant?: string;
   inject?: string;
   operator?: boolean;
+  /** Label of the credential profile the caller already applied to `capability`, for display. */
+  credentialProfile?: string;
 };
 
 export type DiscoveryRunRequest = {
@@ -41,6 +43,46 @@ export type DiscoveryRunRequest = {
 export type RunRequest = ReplayRunRequest | DiscoveryRunRequest;
 
 export type RunStatus = "starting" | "running" | "finished" | "stopped" | "errored";
+
+/**
+ * The intervention a run is currently parked on, surfaced in the summary so the console can
+ * show an approval or human-help card the moment the run pauses, without polling a second API.
+ */
+export type PendingIntervention = {
+  id: string;
+  reasonCode: string;
+  reasonDetail: string;
+  stepId: string | null;
+  stepDescription: string | null;
+  /** Title of the page the run stopped on - e.g. "Authorization Required" at a permission wall. */
+  pageTitle: string | null;
+  /**
+   * Whether this pause looks like an application-level permission wall rather than a generic
+   * stuck step. Computed server-side from the artifact's shape (a non-irreversible step
+   * recorded to escalate on failure) and the page the run stopped on, so the UI switches on
+   * data instead of re-deriving it from prose.
+   */
+  permissionLikely: boolean;
+  createdAt: string;
+};
+
+function looksLikePermissionWall(
+  request: { reason: { detail: string }; stepDescription?: string; observed?: string; context: { title: string } } | undefined,
+  step: { onFailure?: string; risk?: string } | undefined,
+): boolean {
+  if (!request) return false;
+  // Evidence from the target decides; the step shape alone must not, or ordinary breakage
+  // on a step recorded to escalate (DOM drift, a changed selector) would be mislabeled as a
+  // credentials problem. The recorded gate only widens what counts as evidence: for such
+  // steps the page the run stopped on is included in the text that must name the wall.
+  const evidence = [
+    request.reason.detail,
+    request.stepDescription ?? "",
+    request.context.title,
+    ...(step && step.onFailure === "escalate" && step.risk !== "irreversible" ? [request.observed ?? ""] : []),
+  ].join(" ");
+  return /permission|supervisor|authoriz|denied|forbidden|403|access/i.test(evidence);
+}
 
 /** What a discovery run produced, once it is over. */
 export type DiscoveryOutcome = {
@@ -71,6 +113,10 @@ export type RunSummary = {
   exitCode: number | null;
   operatorUrl: string | null;
   eventCount: number;
+  /** Set while the run is paused waiting on a human decision; null otherwise. */
+  pendingIntervention: PendingIntervention | null;
+  /** Display label of the credential profile the run was started with, if any. */
+  credentialProfile: string | null;
 };
 
 type LiveRun = {
@@ -79,7 +125,7 @@ type LiveRun = {
   listeners: Set<(event: RunEvent) => void>;
   stateListeners: Set<(summary: RunSummary) => void>;
   session: BrowserSession | null;
-  /** Present only while an operator console is attached; needed to abort a parked escalation. */
+  /** Present for every replay run (and operator-enabled discovery); needed to resolve or abort a parked escalation. */
   store: InterventionStore | null;
   lastFrame: Buffer | null;
   stopRequested: boolean;
@@ -212,6 +258,39 @@ export class RunHost {
     return true;
   }
 
+  /** Interventions raised by a live run, for the console's approval and human-help cards. */
+  interventions(runId: string): ReturnType<InterventionStore["list"]> {
+    return this.runs.get(runId)?.store?.list() ?? [];
+  }
+
+  /**
+   * Resolves a pending intervention from the main console. Only approve and abort are offered
+   * here: resuming after a manual takeover is the operator console's call, made where the
+   * human can actually see and drive the session.
+   */
+  resolveIntervention(
+    runId: string,
+    interventionId: string,
+    resolution: { decision: "approve" | "abort"; note?: string },
+  ): ReturnType<InterventionStore["list"]>[number] {
+    const run = this.runs.get(runId);
+    const store = run?.store;
+    const intervention = store?.get(interventionId);
+    if (!run || !store || !intervention) {
+      throw new Error(`Intervention ${interventionId} was not found on run ${runId}`);
+    }
+    // "Approve" answers exactly one question: may this irreversible action proceed. A run
+    // parked on anything else (a permission wall, a stuck step) needs a human to actually
+    // intervene via the operator console - approving it from here would just re-run the
+    // failing step and burn the escalation budget.
+    if (resolution.decision === "approve" && intervention.reason.code !== "RISKY_ACTION_APPROVAL") {
+      throw new InterventionStateError(
+        `Intervention ${interventionId} (${intervention.reason.code}) is not an approval gate; use the operator console or abort`,
+      );
+    }
+    return store.resolve(interventionId, resolution);
+  }
+
   start(request: RunRequest): RunSummary {
     const runId = request.kind === "discovery"
       ? `discover-${randomUUID().replaceAll("-", "").slice(0, 12)}`
@@ -235,6 +314,8 @@ export class RunHost {
       exitCode: null,
       operatorUrl: null,
       eventCount: 0,
+      pendingIntervention: null,
+      credentialProfile: request.kind === "replay" ? request.credentialProfile ?? null : null,
     };
     const run: LiveRun = {
       summary,
@@ -283,6 +364,30 @@ export class RunHost {
     const unsubscribe = logger.subscribe((event) => {
       run.events.push(event);
       run.summary.eventCount = run.events.length;
+      // Escalations park the run on a human decision; mirroring that pause into the summary
+      // lets the console render an approval/help card from the run-state stream alone.
+      if (event.type === "escalation.raised" && typeof event.interventionId === "string") {
+        const record = run.store?.get(event.interventionId);
+        const stepId = record?.atStepId ?? (typeof event.stepId === "string" ? event.stepId : null);
+        const step = request.kind === "replay"
+          ? request.capability.steps.find((candidate) => candidate.id === stepId)
+          : undefined;
+        run.summary.pendingIntervention = {
+          id: event.interventionId,
+          reasonCode: record?.reason.code ?? "UNRECOVERABLE",
+          reasonDetail: record?.reason.detail ?? (typeof event.reason === "string" ? event.reason : ""),
+          stepId,
+          stepDescription: record?.stepDescription ?? null,
+          pageTitle: record?.context.title ?? null,
+          permissionLikely: record?.reason.code !== "RISKY_ACTION_APPROVAL" && looksLikePermissionWall(record, step),
+          createdAt: record?.createdAt ?? event.ts,
+        };
+        this.publishState(run);
+      }
+      if (event.type === "human.resolved") {
+        run.summary.pendingIntervention = null;
+        this.publishState(run);
+      }
       for (const listener of run.listeners) {
         try {
           listener(event);
@@ -308,11 +413,14 @@ export class RunHost {
 
       const surface = withFramesetTextFallback(new WebSurface({ session, policy, logger, caller: "automation" }), session);
 
+      // Every replay run gets an intervention store and an operator surface: approvals and
+      // permission walls are normal run states the console must be able to resolve, not an
+      // opt-in extra. Discovery keeps the explicit opt-in, since its escalations end the run.
       let store: InterventionStore | undefined;
-      if (request.operator) {
+      if (request.kind === "replay" || request.operator) {
         store = new InterventionStore({ redactor });
         run.store = store;
-        operator = await startOperatorServer({ store, policy });
+        operator = await startOperatorServerWithFallback({ store, policy });
         run.summary.operatorUrl = operator.url;
         this.publishState(run);
       }
@@ -325,7 +433,11 @@ export class RunHost {
             logger,
             evidence,
             operatorUrl: operator.url,
-            timeoutMs: request.capability.policy.timeoutMs,
+            // The human-decision window, distinct from the capability's own wall clock: a
+            // reviewer reading an approval card gets ten minutes before the pause auto-aborts,
+            // and (since the executor excludes human-wait time from its deadline) taking that
+            // long cannot fail the steps that follow.
+            timeoutMs: Math.max(request.capability.policy.timeoutMs, 600_000),
             policy,
           })
           : undefined;
@@ -444,6 +556,22 @@ export class RunHost {
       capabilityPath: writeCapability(capability, this.rootDir),
       traceLength: discovery.trace.length,
     };
+  }
+}
+
+/**
+ * The operator server historically bound one fixed port per process. Now that every replay run
+ * carries an operator surface, concurrent runs would collide on it, so the fixed port is a
+ * preference and an ephemeral port is the fallback - the run publishes whichever URL it got.
+ */
+async function startOperatorServerWithFallback(
+  options: Parameters<typeof startOperatorServer>[0],
+): Promise<Awaited<ReturnType<typeof startOperatorServer>>> {
+  try {
+    return await startOperatorServer(options);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EADDRINUSE") throw error;
+    return startOperatorServer({ ...options, port: 0 });
   }
 }
 

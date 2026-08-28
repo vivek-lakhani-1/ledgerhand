@@ -50,6 +50,7 @@
     h1 { font-size: 17px; margin: 0 0 3px; }
     h3 { font-size: 12px; margin: 0 0 6px; color: var(--label); text-transform: uppercase; letter-spacing: .06em; }
     .lede { color: var(--muted); font-size: 12.5px; margin: 0 0 12px; }
+    .tiny { font-size: 11.5px; margin: 4px 0 10px; }
     .scroll { overflow-y: auto; flex: 1; min-height: 0; }
     label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 4px; }
     button, input, select, textarea { font: inherit; color: inherit; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 4px; padding: 7px 9px; box-sizing: border-box; }
@@ -61,6 +62,7 @@
     button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     .primary { background: var(--accent-deep); border-color: var(--accent-border); font-weight: 600; color: #fff; }
     .danger { background: var(--danger-bg); border-color: var(--danger-border); }
+    .small { padding: 4px 10px; font-size: 12.5px; }
     .field { margin-bottom: 10px; }
     .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .row > .field { flex: 1; margin-bottom: 0; }
@@ -69,21 +71,6 @@
     a { color: var(--accent); }
     code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
     #theme-toggle { padding: 4px 10px; font-size: 12.5px; flex: none; }
-
-    details.tool { border: 1px solid var(--border); border-radius: 8px; background: var(--panel2); margin-bottom: 7px; flex: none; }
-    details.tool > summary { cursor: pointer; padding: 9px 12px; list-style: none; display: flex; align-items: baseline; gap: 8px; }
-    details.tool > summary::-webkit-details-marker { display: none; }
-    details.tool > summary::before { content: "▸"; color: var(--faint); font-size: 11px; }
-    details.tool[open] > summary::before { content: "▾"; }
-    details.tool > summary .t-name { font-size: 13px; font-weight: 600; }
-    details.tool > summary .t-hint { font-size: 11px; color: var(--muted2); margin-left: auto; }
-    details.tool > .tool-body { padding: 10px 12px 12px; border-top: 1px solid var(--border); }
-    /* The column itself scrolls when expanded tools outgrow the viewport; the chat log
-       still takes the free space when everything is collapsed. */
-    #chat-col { overflow-y: auto; }
-    #tools-master > .tool-body { max-height: none; overflow: visible; padding: 8px; }
-    #tools-master details.tool { margin-bottom: 6px; background: var(--panel); }
-    #tools-master details.tool:last-child { margin-bottom: 0; }
 
     .meta { background: var(--panel2); border: 1px solid var(--border); border-radius: 5px; padding: 9px 10px; font-size: 12px; color: var(--text-soft); margin-bottom: 12px; }
     .meta dl { display: grid; grid-template-columns: 84px 1fr; gap: 3px 9px; margin: 6px 0 0; }
@@ -97,8 +84,61 @@
     .pill.warn { color: var(--warn); border-color: var(--warn-border); background: var(--warn-bg); }
     .pill.idle { color: var(--muted); border-color: var(--input-border); background: var(--idle-bg); }
 
+    /* ------------------------------------------------ target selector + modes */
+    details.dropdown { position: relative; margin-bottom: 4px; }
+    details.dropdown > summary { list-style: none; cursor: pointer; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 5px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; }
+    details.dropdown > summary::-webkit-details-marker { display: none; }
+    details.dropdown > summary::after { content: "▾"; margin-left: auto; color: var(--faint); }
+    details.dropdown > summary .t-title { font-weight: 600; font-size: 13px; }
+    details.dropdown > summary .t-cat { color: var(--muted2); font-size: 11.5px; }
+    .dd-panel { position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; right: 0; background: var(--panel); border: 1px solid var(--border2); border-radius: 7px; padding: 8px; box-shadow: 0 8px 28px #0006; }
+    .dd-panel input { margin-bottom: 8px; }
+    .target-list { max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+    .target-group { font-size: 10.5px; color: var(--label); text-transform: uppercase; letter-spacing: .07em; margin: 7px 2px 2px; }
+    .target-item { text-align: left; width: 100%; background: var(--item-bg); border: 1px solid var(--item-border); border-radius: 6px; padding: 7px 9px; display: block; }
+    .target-item.selected { border-color: var(--sel-border); background: var(--item-sel); }
+    .target-item .tn { font-weight: 600; font-size: 13px; display: flex; gap: 7px; align-items: baseline; }
+    .target-item .tc { color: var(--muted2); font-size: 11.5px; }
+    .target-item .ts { font-size: 11.5px; margin-top: 2px; }
+    .ts.have { color: var(--ok); } .ts.draft { color: var(--warn); } .ts.none { color: var(--muted2); }
+
+    .seg { display: flex; border: 1px solid var(--input-border); border-radius: 6px; overflow: hidden; margin-bottom: 4px; }
+    .seg button { flex: 1; border: none; border-radius: 0; background: transparent; padding: 6px 4px; font-size: 12px; color: var(--muted); }
+    .seg button + button { border-left: 1px solid var(--input-border); }
+    .seg button.active { background: var(--accent-deep); color: #fff; font-weight: 600; }
+
+    /* ------------------------------------------------ plan + intervention cards */
+    .card { border: 1px solid var(--border2); border-radius: 7px; background: var(--panel2); padding: 11px 12px; font-size: 12.5px; margin-bottom: 10px; }
+    .card.ok { border-color: var(--ok-border); }
+    .card.warn { border-color: var(--warn-border); background: var(--warn-bg); }
+    .card.bad { border-color: var(--bad-border); }
+    .card.accent { border-color: var(--accent-border); }
+    .card h4 { margin: 0 0 7px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--label); }
+    .card .headline { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+    .plan-line { display: flex; gap: 7px; margin: 3px 0; align-items: baseline; }
+    .plan-line .g { flex: none; width: 14px; text-align: center; }
+    .plan-line.good .g { color: var(--ok); }
+    .plan-line.note .g { color: var(--warn); }
+    .plan-line.act .g { color: var(--accent); }
+    .card .btns { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .card dl.kv-grid { display: grid; grid-template-columns: 96px 1fr; gap: 3px 10px; margin: 8px 0 0; }
+    .card dl.kv-grid dt { color: var(--muted); } .card dl.kv-grid dd { margin: 0; overflow-wrap: anywhere; }
+
+    #intervention { flex: none; }
+    #intervention .card { margin-bottom: 10px; }
+
+    /* ------------------------------------------------ review overlay */
+    #review-overlay { position: fixed; inset: 0; z-index: 60; background: #0008; display: flex; align-items: center; justify-content: center; padding: 4vh 4vw; }
+    #review-overlay[hidden] { display: none; }
+    #review-overlay .sheet { background: var(--panel); border: 1px solid var(--border2); border-radius: 10px; max-width: 760px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 18px; }
+    .step-list { margin: 6px 0 0; padding: 0; list-style: none; }
+    .step-list li { padding: 5px 8px; border-left: 3px solid var(--border2); background: var(--ev-bg); border-radius: 0 4px 4px 0; margin-bottom: 3px; font-size: 12.5px; }
+    .step-list li.irr { border-left-color: #b8564a; }
+    .step-list li .risk { color: var(--warn); font-size: 11px; margin-left: 6px; }
+
     #side-head { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 10px; }
     #side-head h1 { margin: 0; }
+    #exec-badge { font-size: 11.5px; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; }
     #frame-wrap { position: relative; background: var(--frame-bg); border: 1px solid var(--border2); border-radius: 5px; margin-bottom: 10px; flex: 1; min-height: 0; display: flex; }
     #frame { display: block; width: 100%; height: 100%; object-fit: contain; }
     #frame-note { position: absolute; right: 6px; bottom: 6px; background: #0009; padding: 2px 7px; border-radius: 3px; font-size: 11px; color: #e6e9ee; }
@@ -130,8 +170,10 @@
     .result-box.ok { border-color: var(--ok-border); } .result-box.bad { border-color: var(--bad-border); } .result-box.warn { border-color: var(--warn-border); }
     .result-box dl { display: grid; grid-template-columns: 106px 1fr; gap: 4px 10px; margin: 8px 0 0; }
     .result-box dt { color: var(--muted); } .result-box dd { margin: 0; overflow-wrap: anywhere; }
+    .result-box .btns { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
     .empty { color: var(--muted2); font-size: 12.5px; padding: 14px 0; }
-    #message { min-height: 18px; color: var(--warn); font-size: 12.5px; margin-top: 8px; }
+    /* Status text only - it must never sit between the pointer and a control. */
+    #message { min-height: 18px; color: var(--warn); font-size: 12.5px; margin-top: 8px; flex: none; pointer-events: none; }
     .evidence { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
     .evidence .ev-title { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
     .evidence .shots { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
@@ -140,6 +182,13 @@
     .evidence .shots .shot:hover img, .evidence .shots .shot:focus-visible img { border-color: var(--accent); }
     .evidence .ev-links { font-size: 12px; margin-top: 6px; }
 
+    #chat-col { overflow-y: auto; }
+    #chat-view, #manual-view { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    /* Manual Run grows with its plan cards and lets the column scroll; clamping it to the
+       viewport made tall cards spill underneath the status strip, which then ate their clicks. */
+    #manual-view { flex: none; min-height: auto; }
+    /* The id selector outranks the hidden attribute's UA rule; without this the view swap breaks. */
+    #chat-view[hidden], #manual-view[hidden] { display: none; }
     #chat-log { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; flex: 1; min-height: 120px; overflow-y: auto; }
     .chat-msg { border: 1px solid var(--border); border-radius: 10px; padding: 8px 11px; max-width: 94%; }
     .chat-msg.user { background: var(--chat-user); border-color: transparent; align-self: flex-end; }
@@ -150,6 +199,13 @@
     .chat-run { display: block; margin-top: 6px; background: var(--chip-bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 12px; text-align: left; }
     .quick-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
     .quick { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--chip-bg); border: 1px solid var(--accent-border); color: var(--accent); }
+
+    details.adv { border: 1px solid var(--border); border-radius: 7px; background: var(--panel2); margin: 4px 0 10px; flex: none; }
+    details.adv > summary { cursor: pointer; padding: 8px 11px; list-style: none; font-size: 12.5px; font-weight: 600; color: var(--text-soft); }
+    details.adv > summary::-webkit-details-marker { display: none; }
+    details.adv > summary::before { content: "▸ "; color: var(--faint); font-size: 11px; }
+    details.adv[open] > summary::before { content: "▾ "; }
+    details.adv > .adv-body { padding: 4px 11px 11px; border-top: 1px solid var(--border); }
     @media (max-width: 1100px) { main { grid-template-columns: 1fr; height: auto; } #frame-wrap { flex: none; min-height: 46vh; } #chat-log { max-height: 34vh; flex: none; } }
   </style>
 </head>
@@ -158,90 +214,101 @@
   <section id="chat-col">
     <div class="row" style="justify-content: space-between; margin-bottom: 3px;">
       <h1 style="margin:0">Ledgerhand</h1>
+      <span style="flex:1"></span>
+      <button id="open-manual" class="small" title="Advanced controls for one run">Manual Run</button>
       <button id="theme-toggle" title="Switch between light and dark mode">☀ Light</button>
     </div>
-    <p class="lede">Ask for a task in plain language. The assistant picks a capability and runs it — watch the live browser in the middle, the steps on the right.</p>
+    <p class="lede">Choose where Ledgerhand may work, tell it what you want done, and it handles the rest safely.</p>
 
-    <div class="warn-chip" id="chat-warning" hidden></div>
-    <div id="chat-log"><p class="empty">Try: “check member 100987's balance” · “transfer $1 from 100987-S0001 to 100987-S0070” · “look up members named Lovelace”.</p></div>
-    <div class="field">
-      <textarea id="chat-input" rows="2" placeholder="What would you like done?"></textarea>
+    <div class="field" style="margin-bottom:2px">
+      <label for="target-summary">Target System</label>
+      <details class="dropdown" id="target-dd">
+        <summary id="target-summary" tabindex="0"><span class="t-title">Loading…</span></summary>
+        <div class="dd-panel">
+          <input id="target-search" type="text" placeholder="Search systems…" autocomplete="off">
+          <div class="target-list" id="target-list"></div>
+        </div>
+      </details>
     </div>
-    <div class="row" style="margin-bottom:12px">
-      <button class="primary" id="chat-send">Send</button>
-      <button id="chat-reset">New conversation</button>
+    <p class="lede tiny" id="target-note">Security boundary: Ledgerhand can interact only with the selected target during this run.</p>
+
+    <div class="field" style="margin-bottom:2px">
+      <label>Automation Mode</label>
+      <div class="seg" id="mode-seg" role="radiogroup" aria-label="Automation mode">
+        <button data-mode="automatic" class="active">Automatic</button>
+        <button data-mode="replay_only">Replay Only</button>
+        <button data-mode="discover_only">Discover Only</button>
+      </div>
+    </div>
+    <p class="lede tiny" id="mode-note">Ledgerhand checks whether it already knows the task. Known → deterministic Replay. Unknown → Discovery, then human review.</p>
+
+    <div id="chat-view">
+      <div class="warn-chip" id="chat-warning" hidden></div>
+      <div id="chat-log"><p class="empty">Try: “check member 100987's balance” · “transfer $1 from 100987-S0001 to 100987-S0070” · “put a fraud hold on member 100987”.</p></div>
+      <div class="field">
+        <textarea id="chat-input" rows="2" placeholder="What would you like done?"></textarea>
+      </div>
+      <div class="row" style="margin-bottom:6px">
+        <button class="primary" id="chat-send">Send</button>
+        <button id="chat-reset">New conversation</button>
+      </div>
     </div>
 
-    <details class="tool" id="tools-master">
-      <summary><span class="t-name">Tools</span><span class="t-hint">replay · discover</span></summary>
-      <div class="tool-body">
+    <div id="manual-view" hidden>
+      <div class="row" style="margin-bottom:10px">
+        <button id="back-chat" class="small">← Back to Chat</button>
+      </div>
 
-    <details class="tool">
-      <summary><span class="t-name">Replay a capability</span><span class="t-hint">manual form</span></summary>
-      <div class="tool-body">
-        <div class="field">
-          <label for="capability">Capability</label>
-          <select id="capability"><option>Loading…</option></select>
-        </div>
-        <div class="meta" id="capability-meta">Select a capability.</div>
-        <div id="inputs"></div>
-        <div class="row" style="margin-bottom:10px">
+      <div class="field" id="goal-field">
+        <label for="goal">Goal / Task</label>
+        <textarea id="goal" rows="2" placeholder="Check member 100987's balance"></textarea>
+      </div>
+
+      <div class="field" id="ro-field" hidden>
+        <label for="ro-capability">Automation to run (Replay Only)</label>
+        <select id="ro-capability"></select>
+      </div>
+
+      <div class="row" style="margin-bottom:10px">
+        <button class="primary" id="plan-run">Check Automations</button>
+      </div>
+
+      <div id="plan-card"></div>
+
+      <details class="adv" id="advanced">
+        <summary>Advanced</summary>
+        <div class="adv-body">
           <div class="field">
-            <label for="tenant">Tenant</label>
-            <select id="tenant"></select>
+            <label for="adv-entry-url">Entry URL — defaults to the selected target's entry point</label>
+            <input id="adv-entry-url" type="text" placeholder="(target default)">
           </div>
           <div class="field">
-            <label for="inject">Inject fault</label>
-            <select id="inject"></select>
+            <label for="adv-secrets">Discovery credential env vars — <code>.env</code> names, never real passwords</label>
+            <input id="adv-secrets" type="text" placeholder="(target default)">
           </div>
-        </div>
-        <label class="check" style="margin-bottom:12px">
-          <input type="checkbox" id="operator-replay">
-          Start operator console (needed for irreversible steps)
-        </label>
-        <button class="primary" id="run-replay">Run replay</button>
-      </div>
-    </details>
-
-    <details class="tool">
-      <summary><span class="t-name">Discover</span><span class="t-hint">record a new capability</span></summary>
-      <div class="tool-body">
-        <div class="warn-chip" id="discover-warning">
-          Discovery drives the app with the model and spends API credits on every step. Use the step cap and Stop.
-        </div>
-        <p class="lede">Each run writes a fresh <strong>draft</strong> artifact into <code>capabilities/</code> under its own run id — drafts are never callable until a human approves them. To re-record the same task cleanly, delete the old draft JSON from <code>capabilities/</code> first (its evidence stays in <code>evidence/runs/</code>).</p>
-        <div class="field">
-          <label for="goal">Goal</label>
-          <textarea id="goal" rows="2" placeholder="Look up a member savings balance"></textarea>
-        </div>
-        <div class="field">
-          <label for="entry-url">Entry URL</label>
-          <input id="entry-url" type="text" placeholder="http://127.0.0.1:4599/t/alpha/msc/login">
-        </div>
-        <div class="field">
-          <label for="discover-secrets">Credential env vars — which <code>.env</code> names hold this target's login (never type real passwords here)</label>
-          <input id="discover-secrets" type="text" value="APP_USER, APP_PASSWORD">
-        </div>
-        <div class="field">
-          <label for="discover-inputs">Inputs — one <code>key=value</code> per line</label>
-          <textarea id="discover-inputs" rows="3" placeholder="memberId=10001"></textarea>
-        </div>
-        <div class="row" style="margin-bottom:10px">
           <div class="field">
-            <label for="max-steps">Max model steps</label>
-            <input id="max-steps" type="number" min="1" max="60" value="25">
+            <label for="adv-inputs">Discovery inputs — one <code>key=value</code> per line</label>
+            <textarea id="adv-inputs" rows="2" placeholder="memberId=10001"></textarea>
           </div>
+          <div class="row" style="margin-bottom:8px">
+            <div class="field">
+              <label for="adv-max-steps">Discovery step limit</label>
+              <input id="adv-max-steps" type="number" min="1" max="60" value="25">
+            </div>
+            <div class="field">
+              <label for="adv-inject">Inject fault</label>
+              <select id="adv-inject"></select>
+            </div>
+          </div>
+          <label class="check" style="margin-bottom:4px">
+            <input type="checkbox" id="adv-risky-discovery">
+            Allow risky actions during Discovery (operator supervises)
+          </label>
         </div>
-        <label class="check" style="margin-bottom:12px">
-          <input type="checkbox" id="operator-discover">
-          Start operator console alongside discovery
-        </label>
-        <button class="primary" id="run-discover">Run discovery</button>
-      </div>
-    </details>
+      </details>
 
-      </div>
-    </details>
+      <div id="draft-box"></div>
+    </div>
 
     <div id="message" role="status"></div>
   </section>
@@ -250,17 +317,20 @@
     <div id="side-head">
       <h1 id="side-title">Live run</h1>
       <span class="pill idle" id="side-status">idle</span>
+      <span id="exec-badge" hidden></span>
       <span style="flex:1"></span>
-      <a id="operator-link" href="#" target="_blank" rel="noopener" hidden>Operator console ↗</a>
+      <a id="operator-link" href="#" target="_blank" rel="noopener" hidden>Operator Console ↗</a>
       <button class="danger" id="stop" disabled>Stop</button>
     </div>
+
+    <div id="intervention"></div>
 
     <div id="frame-wrap">
       <div id="frame-empty">
         <div class="inner">
           <div class="glyph">🖥️</div>
           <div class="big" id="frame-empty-title">Nothing running yet</div>
-          <div id="frame-empty-text">Ask the assistant on the left, or pick a recent run — the automated browser shows up here live while it works.</div>
+          <div id="frame-empty-text">Pick a target, describe a task on the left — the automated browser shows up here live while it works.</div>
         </div>
       </div>
       <img id="frame" alt="Live view of the automated browser page" hidden>
@@ -281,11 +351,18 @@
   </section>
 </main>
 
+<div id="review-overlay" hidden>
+  <div class="sheet" id="review-sheet"></div>
+</div>
+
 <script type="module">
 const $ = (id) => document.getElementById(id);
 const state = {
   config: null,
   capabilities: [],
+  targets: [],
+  selectedTarget: null,     // one of state.targets, or a {id:"custom", ...} object
+  mode: "automatic",
   runId: null,
   stream: null,
   frameTimer: null,
@@ -296,6 +373,7 @@ const state = {
   autoAttached: null,
   shots: [],
   shotIndex: -1,
+  plan: null,
   // Event types that are mechanism rather than narrative; hidden unless Verbose is on.
   noisy: new Set(["policy.decision", "target.resolved", "action.performed"]),
 };
@@ -335,7 +413,7 @@ function describe(ev) {
     case "retry":
       return { tone: "warn", title: `${step}retry ${ev.attempt ?? ""}`, sub: `${ev.class ?? ev.reason ?? ""} · backoff ${ev.backoffMs ?? 0}ms` };
     case "escalation.raised":
-      return { tone: "warn", title: "escalation raised", sub: ev.reason };
+      return { tone: "warn", title: "human help requested", sub: ev.reason };
     case "human.action":
       return { tone: "warn", title: "human action", sub: ev.kind ?? "" };
     case "human.resolved":
@@ -407,23 +485,39 @@ function applyVerbose() {
   }
 }
 
-function statusTone(summary) {
-  if (summary.status === "running" || summary.status === "starting") return "running";
-  if (summary.status === "errored") return "bad";
-  if (summary.status === "stopped") return "warn";
-  if (summary.kind === "discovery") return summary.discovery?.status === "completed" ? "ok" : "warn";
-  const status = summary.result?.status;
-  if (status === "success" || status === "business_outcome") return "ok";
-  if (status === "escalated") return "warn";
-  return status === "failed" ? "bad" : "idle";
+// The server classifies a pause as a permission wall (from the artifact's recorded shape and
+// the page the run stopped on); the page only reads that data.
+function isPermissionWall(pending) {
+  return pending.permissionLikely === true;
 }
 
-function statusLabel(summary) {
-  if (summary.status === "running" || summary.status === "starting") return summary.status;
-  if (summary.status === "errored") return "errored";
-  if (summary.status === "stopped") return "stopped";
-  if (summary.kind === "discovery") return summary.discovery?.status ?? "finished";
-  return summary.result?.status ?? "finished";
+/**
+ * The user-facing status vocabulary. The run's internal status codes stay visible in the
+ * Steps panel and result details; this pill answers "what is happening" in plain words.
+ */
+function userStatus(summary) {
+  if (summary.status === "starting") return { label: "PREPARING", tone: "running" };
+  if (summary.status === "running") {
+    const pending = summary.pendingIntervention;
+    if (pending?.reasonCode === "RISKY_ACTION_APPROVAL") return { label: "APPROVAL REQUIRED", tone: "warn" };
+    if (pending) return { label: isPermissionWall(pending) ? "PERMISSION REQUIRED" : "HUMAN HELP REQUIRED", tone: "warn" };
+    if (summary.kind === "discovery") return { label: "DISCOVERING", tone: "running" };
+    return { label: "REPLAYING", tone: "running" };
+  }
+  if (summary.status === "stopped") return { label: "STOPPED", tone: "warn" };
+  if (summary.status === "errored") return { label: "FAILED", tone: "bad" };
+  if (summary.kind === "discovery") {
+    const status = summary.discovery?.status;
+    if (status === "completed") return { label: "REVIEW REQUIRED", tone: "warn" };
+    if (status === "escalated") return { label: "HUMAN HELP REQUIRED", tone: "warn" };
+    return { label: "STOPPED", tone: "warn" };
+  }
+  const status = summary.result?.status;
+  if (status === "success") return { label: "SUCCESS", tone: "ok" };
+  if (status === "business_outcome") return { label: "BUSINESS OUTCOME", tone: "ok" };
+  if (status === "escalated") return { label: "HUMAN HELP REQUIRED", tone: "warn" };
+  if (status === "failed") return { label: "FAILED", tone: "bad" };
+  return { label: "FINISHED", tone: "idle" };
 }
 
 function renderResult(summary) {
@@ -432,22 +526,33 @@ function renderResult(summary) {
   if (!done) { box.innerHTML = ""; return; }
 
   const rows = [];
+  const actions = [];
   let tone = "warn";
   let headline = "";
+  let note = "";
 
   if (summary.status === "errored") {
     tone = "bad";
-    headline = "ERRORED";
+    headline = "FAILED";
+    note = "Something went wrong in the automation itself, not in the target system.";
     rows.push(["error", summary.error]);
   } else if (summary.status === "stopped") {
     headline = "STOPPED";
     rows.push(["reason", "Stopped from the console before it finished"]);
   } else if (summary.kind === "discovery") {
     const d = summary.discovery ?? {};
-    tone = d.status === "completed" ? "ok" : "warn";
-    headline = `DISCOVERY ${String(d.status ?? "").toUpperCase()}`;
-    if (d.capabilityPath) rows.push(["wrote", d.capabilityPath]);
-    if (d.reason) rows.push(["reason", d.reason]);
+    if (d.status === "completed") {
+      tone = "ok";
+      headline = "DISCOVERY COMPLETE";
+      note = "A new automation draft was created. A human must review and approve it before it can run as a normal automation.";
+      rows.push(["status", "Review Required"]);
+      if (d.capabilityPath) rows.push(["draft file", d.capabilityPath]);
+      const file = d.capabilityPath ? d.capabilityPath.split("/").pop() : null;
+      if (file) actions.push({ label: "Review Automation", primary: true, onClick: () => void openReviewByFile(file) });
+    } else {
+      headline = d.status === "escalated" ? "HUMAN HELP REQUIRED" : "DISCOVERY STOPPED";
+      if (d.reason) rows.push(["reason", d.reason]);
+    }
     rows.push(["model steps", d.traceLength]);
   } else {
     const r = summary.result ?? {};
@@ -458,17 +563,20 @@ function renderResult(summary) {
       rows.push(["steps", r.stepsExecuted]);
     } else if (r.status === "business_outcome") {
       tone = "ok";
-      headline = `BUSINESS OUTCOME · ${r.code}`;
-      rows.push(["message", r.message]);
+      headline = "RESULT";
+      note = "The target system returned a valid business response. The automation itself completed correctly.";
+      rows.push(["response", r.message]);
+      rows.push(["code", r.code]);
       rows.push(["at step", r.atStepId]);
-      rows.push(["note", "A legitimate answer, not a failure — exit 0."]);
     } else if (r.status === "escalated") {
-      headline = "ESCALATED";
+      headline = "HUMAN HELP REQUIRED";
+      note = "The automation is valid, but this run could not complete the step automatically. Ledgerhand stopped instead of trying a higher-privilege account.";
       rows.push(["reason", r.reason]);
       rows.push(["at step", r.atStepId]);
     } else if (r.status === "failed") {
       tone = "bad";
-      headline = `FAILED · ${r.error?.class ?? ""}`;
+      headline = "FAILED";
+      rows.push(["problem", r.error?.class]);
       rows.push(["at step", `${r.error?.stepId ?? "run"}${r.error?.stepDescription ? ` — ${r.error.stepDescription}` : ""}`]);
       rows.push(["expected", r.error?.expected]);
       rows.push(["observed", r.error?.observed]);
@@ -476,9 +584,10 @@ function renderResult(summary) {
     }
     if (r.evidenceDir) rows.push(["evidence", r.evidenceDir]);
   }
+  if (summary.credentialProfile) rows.push(["credentials", summary.credentialProfile]);
   rows.push(["exit code", summary.exitCode]);
 
-  box.innerHTML = `<div class="result-box ${tone}"><strong>${headline}</strong><dl></dl></div>`;
+  box.innerHTML = `<div class="result-box ${tone}"><strong>${escapeHtml(headline)}</strong>${note ? `<div class="lede tiny" style="margin:4px 0 0">${escapeHtml(note)}</div>` : ""}<dl></dl><div class="btns"></div></div>`;
   const dl = box.querySelector("dl");
   for (const [key, value] of rows) {
     if (value === undefined || value === null || value === "") continue;
@@ -489,26 +598,141 @@ function renderResult(summary) {
     dd.textContent = String(value);
     dl.append(dt, dd);
   }
+  const btns = box.querySelector(".btns");
+  for (const action of actions) {
+    const button = document.createElement("button");
+    button.textContent = action.label;
+    if (action.primary) button.className = "primary";
+    button.addEventListener("click", action.onClick);
+    btns.append(button);
+  }
+  if (actions.length === 0) btns.remove();
+}
+
+/**
+ * The card a paused run shows in the center column. Approval is deliberately prominent: an
+ * irreversible action is about to change the target system and a small hidden control would
+ * misrepresent the weight of that decision.
+ */
+function renderIntervention(summary) {
+  const holder = $("intervention");
+  const pending = summary.status === "running" ? summary.pendingIntervention : null;
+  if (!pending) { holder.innerHTML = ""; return; }
+  if (holder.dataset.interventionId === pending.id) return;
+  holder.dataset.interventionId = pending.id;
+
+  const card = document.createElement("div");
+  card.className = "card warn";
+  if (pending.reasonCode === "RISKY_ACTION_APPROVAL") {
+    card.innerHTML = `
+      <div class="headline">APPROVAL REQUIRED</div>
+      <div>Ledgerhand is ready to perform:</div>
+      <div style="font-weight:600; margin:4px 0">${escapeHtml(pending.stepDescription ?? pending.stepId ?? "the next step")}</div>
+      <dl class="kv-grid"></dl>
+      <div style="margin-top:6px">This action changes the target system and cannot be undone automatically.</div>
+      <div class="btns">
+        <button class="primary" data-act="approve">Approve and Continue</button>
+        <button class="danger" data-act="abort">Cancel</button>
+      </div>`;
+    const dl = card.querySelector("dl");
+    for (const [key, value] of Object.entries(summary.inputs ?? {})) {
+      const dt = document.createElement("dt");
+      dt.textContent = key;
+      const dd = document.createElement("dd");
+      dd.className = "mono";
+      dd.textContent = String(value);
+      dl.append(dt, dd);
+    }
+    if (summary.credentialProfile) {
+      const dt = document.createElement("dt");
+      dt.textContent = "credentials";
+      const dd = document.createElement("dd");
+      dd.textContent = summary.credentialProfile;
+      dl.append(dt, dd);
+    }
+  } else {
+    const permission = isPermissionWall(pending);
+    card.innerHTML = `
+      <div class="headline">${permission ? "PERMISSION REQUIRED" : "HUMAN HELP REQUIRED"}</div>
+      <div>${permission
+        ? "The signed-in account cannot complete this step. Ledgerhand has stopped instead of trying a higher-privilege account."
+        : "Ledgerhand reached a step it is not allowed to complete automatically."}</div>
+      <dl class="kv-grid">
+        <dt>at step</dt><dd class="mono">${escapeHtml(pending.stepDescription ?? pending.stepId ?? "")}</dd>
+        ${pending.pageTitle ? `<dt>target says</dt><dd>${escapeHtml(pending.pageTitle)}</dd>` : ""}
+        <dt>detail</dt><dd>${escapeHtml(pending.reasonDetail ?? "")}</dd>
+      </dl>
+      <div class="btns">
+        <a href="${escapeHtml(operatorDeepLink(summary, pending))}" target="_blank" rel="noopener"><button class="primary">Open Operator Console</button></a>
+        <button class="danger" data-act="stop">Stop this run</button>
+      </div>`;
+  }
+  for (const button of card.querySelectorAll("[data-act]")) {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        if (button.dataset.act === "stop") {
+          // A permission wall is not the automation's failure; ending the run here is a calm
+          // STOP, not an abort that would report the step as broken.
+          await fetch(`/api/runs/${summary.runId}/stop`, { method: "POST" });
+          return;
+        }
+        const response = await fetch(`/api/runs/${summary.runId}/interventions/${pending.id}/resolve`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ decision: button.dataset.act, note: "Decided in the Ledgerhand console" }),
+        });
+        if (!response.ok) {
+          // e.g. another tab already decided, or the decision window lapsed. Say so and let
+          // the next run-state event redraw the card with reality.
+          const payload = await response.json().catch(() => ({}));
+          $("message").textContent = payload.message ?? payload.error ?? `The decision was rejected (HTTP ${response.status}).`;
+          delete holder.dataset.interventionId;
+          button.disabled = false;
+        }
+      } catch {
+        button.disabled = false;
+      }
+    });
+  }
+  holder.innerHTML = "";
+  holder.append(card);
+}
+
+function operatorDeepLink(summary, pending) {
+  if (!summary.operatorUrl) return "#";
+  return `${summary.operatorUrl.replace(/\/$/, "")}/?intervention=${encodeURIComponent(pending.id)}`;
 }
 
 function renderState(summary) {
   state.status = summary.status;
+  state.lastSummary = summary;
   $("side-title").textContent = summary.runId;
   const pill = $("side-status");
-  pill.className = `pill ${statusTone(summary)}`;
-  pill.textContent = statusLabel(summary);
+  const status = userStatus(summary);
+  pill.className = `pill ${status.tone}`;
+  pill.textContent = status.label;
   $("stop").disabled = !(summary.status === "running" || summary.status === "starting");
 
+  const badge = $("exec-badge");
+  badge.hidden = false;
+  badge.textContent = summary.kind === "discovery"
+    ? "AI exploring (Discovery)"
+    : "Deterministic Replay — AI not used";
+
   const link = $("operator-link");
-  if (summary.operatorUrl) {
+  if (summary.operatorUrl && (summary.status === "running" || summary.status === "starting")) {
     link.hidden = false;
     link.href = summary.operatorUrl;
   } else {
     link.hidden = true;
   }
 
+  renderIntervention(summary);
   renderResult(summary);
   if (summary.status !== "running" && summary.status !== "starting") {
+    $("intervention").innerHTML = "";
+    delete $("intervention").dataset.interventionId;
     // On a bad ending the tail of the timeline is rarely the interesting part; the step that
     // actually broke is. Put it on screen instead of making the reader hunt for it.
     const failure = $("timeline").querySelector(".ev.bad.hilite") ?? $("timeline").querySelector(".ev.bad");
@@ -520,6 +744,7 @@ function renderState(summary) {
       $("frame-note").hidden = $("frame").hidden;
       $("frame-note").textContent = "final frame";
     });
+    void refreshTargetsAndCapabilities();
   }
 }
 
@@ -566,6 +791,8 @@ function attach(runId) {
   state.runId = runId;
   $("timeline").innerHTML = "";
   $("result").innerHTML = "";
+  $("intervention").innerHTML = "";
+  delete $("intervention").dataset.interventionId;
   state.shots = [];
   state.shotIndex = -1;
   $("frame").removeAttribute("src");
@@ -668,71 +895,575 @@ function showShot(index) {
   $("frame-note").textContent = `${shot.name} · ${state.shotIndex + 1}/${state.shots.length} · ← → to browse`;
 }
 
-// ---------------------------------------------------------------- launcher
+// ---------------------------------------------------------------- targets
 
-function selectedCapability() {
-  return state.capabilities.find((c) => c.file === $("capability").value) ?? null;
+function selectedTargetId() {
+  return state.selectedTarget?.id ?? null;
 }
 
-function renderCapabilityMeta() {
-  const cap = selectedCapability();
-  const meta = $("capability-meta");
-  const inputs = $("inputs");
-  inputs.innerHTML = "";
-  if (!cap) { meta.textContent = "No capabilities found in capabilities/."; return; }
+function statusLine(target) {
+  if (target.custom) return { cls: "none", text: `Locked to ${target.origin}` };
+  if (target.automationStatus === "available") {
+    return { cls: "have", text: `● ${target.approvedCount} approved automation${target.approvedCount === 1 ? "" : "s"}` };
+  }
+  if (target.automationStatus === "draft_only") {
+    return { cls: "draft", text: `◐ ${target.draftCount} draft awaiting review` };
+  }
+  return { cls: "none", text: "○ No automation discovered yet" };
+}
 
-  meta.innerHTML = `<div>${escapeHtml(cap.description)}</div><dl>
-    <dt>name</dt><dd class="mono">${escapeHtml(cap.name)} v${escapeHtml(cap.version)}</dd>
-    <dt>approval</dt><dd>${escapeHtml(cap.approval)}</dd>
-    <dt>steps</dt><dd>${cap.stepCount}${cap.hasIrreversibleStep ? " · contains an irreversible step" : ""}</dd>
-    <dt>outputs</dt><dd class="mono">${escapeHtml(cap.outputs.join(", ") || "—")}</dd>
-  </dl>`;
+function renderTargetSummary() {
+  const summary = $("target-summary");
+  const target = state.selectedTarget;
+  if (!target) {
+    summary.innerHTML = `<span class="t-title">Select a target…</span>`;
+    return;
+  }
+  summary.innerHTML = `<span class="t-title"></span><span class="t-cat"></span>`;
+  summary.querySelector(".t-title").textContent = target.name;
+  summary.querySelector(".t-cat").textContent = target.custom ? target.origin : target.category;
+}
 
+function renderTargetList() {
+  const list = $("target-list");
+  const query = $("target-search").value.trim().toLowerCase();
+  const matches = state.targets.filter((target) =>
+    !query || `${target.name} ${target.category} ${target.origin}`.toLowerCase().includes(query));
+  const available = matches.filter((target) => target.automationStatus === "available");
+  const others = matches.filter((target) => target.automationStatus !== "available");
+  list.innerHTML = "";
+
+  const addGroup = (label, group) => {
+    if (group.length === 0) return;
+    const heading = document.createElement("div");
+    heading.className = "target-group";
+    heading.textContent = label;
+    list.append(heading);
+    for (const target of group) {
+      const item = document.createElement("button");
+      item.className = `target-item${target.id === selectedTargetId() ? " selected" : ""}`;
+      const status = statusLine(target);
+      item.innerHTML = `<span class="tn"></span><span class="tc"></span><div class="ts ${status.cls}"></div>`;
+      item.querySelector(".tn").textContent = target.name;
+      item.querySelector(".tc").textContent = target.category;
+      item.querySelector(".ts").textContent = status.text;
+      item.addEventListener("click", () => {
+        selectTarget(target);
+        $("target-dd").open = false;
+      });
+      list.append(item);
+    }
+  };
+  addGroup("Available", available);
+  addGroup("Other configured targets", others);
+  if (state.selectedTarget?.custom) {
+    addGroup("This run", [state.selectedTarget]);
+  }
+  if (list.children.length === 0) list.innerHTML = '<p class="empty">No target matches.</p>';
+}
+
+// Selecting a target only establishes the boundary for the next run; nothing starts here.
+function selectTarget(target) {
+  // No configured targets (missing or invalid config/targets.json) must degrade to a usable
+  // page with a visible reason - not a TypeError that kills the rest of boot().
+  if (!target) {
+    state.selectedTarget = null;
+    renderTargetSummary();
+    $("message").textContent = "No target systems are configured — check config/targets.json.";
+    return;
+  }
+  state.selectedTarget = target;
+  if (!target.custom) localStorage.setItem("lh-target", target.id);
+  renderTargetSummary();
+  renderTargetList();
+  syncManualDefaults();
+  renderReplayOnlyPicker();
+  renderDraftBox();
+  clearPlan();
+}
+
+async function refreshTargetsAndCapabilities() {
+  const [targets, capabilities] = await Promise.all([
+    fetch("/api/targets").then((r) => r.json()).catch(() => state.targets),
+    fetch("/api/capabilities").then((r) => r.json()).catch(() => state.capabilities),
+  ]);
+  state.targets = targets;
+  state.capabilities = capabilities;
+  if (state.selectedTarget && !state.selectedTarget.custom) {
+    state.selectedTarget = targets.find((target) => target.id === selectedTargetId()) ?? state.selectedTarget;
+  }
+  renderTargetSummary();
+  renderTargetList();
+  renderReplayOnlyPicker();
+  renderDraftBox();
+}
+
+/**
+ * If the pasted entry URL belongs to a configured target, select it; otherwise lock to a
+ * custom one. The server owns the resolution rule (/api/targets/detect), so the page and the
+ * plan endpoint can never disagree about which boundary a URL falls under.
+ */
+async function detectTargetFromUrl(url) {
+  try {
+    const response = await fetch(`/api/targets/detect?url=${encodeURIComponent(url)}`);
+    if (!response.ok) return;
+    const detected = await response.json();
+    if (detected.custom) {
+      selectTarget({ ...detected, approvedCount: 0, draftCount: 0, automationStatus: "not_discovered" });
+      return;
+    }
+    const preset = state.targets.find((target) => target.id === detected.id);
+    if (preset) selectTarget(preset);
+  } catch {
+    // Detection is a convenience; a dropped request just leaves the current selection.
+  }
+}
+
+// ---------------------------------------------------------------- modes + views
+
+function setMode(mode) {
+  state.mode = mode;
+  for (const button of $("mode-seg").querySelectorAll("button")) {
+    button.classList.toggle("active", button.dataset.mode === mode);
+  }
+  $("mode-note").textContent = {
+    automatic: "Ledgerhand checks whether it already knows the task. Known → deterministic Replay. Unknown → Discovery, then human review.",
+    replay_only: "Run an already approved automation only. If none matches, Ledgerhand will not start Discovery on its own.",
+    discover_only: "Explore the task and record a new automation draft. A human must review and approve it before normal use.",
+  }[mode];
+  $("ro-field").hidden = mode !== "replay_only";
+  $("goal-field").hidden = false;
+  clearPlan();
+}
+
+function showManual(show) {
+  $("manual-view").hidden = !show;
+  $("chat-view").hidden = show;
+  $("open-manual").hidden = show;
+}
+
+function syncManualDefaults() {
+  const target = state.selectedTarget;
+  if (!target) return;
+  $("adv-entry-url").placeholder = target.entryUrl ?? "(target default)";
+  $("adv-secrets").placeholder = (target.discoverySecretNames ?? []).join(", ") || "(target default)";
+}
+
+function renderReplayOnlyPicker() {
+  const select = $("ro-capability");
+  const target = state.selectedTarget;
+  select.innerHTML = "";
+  const approved = state.capabilities.filter(
+    (cap) => cap.approval === "approved" && target && cap.origin === target.origin);
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = approved.length ? "Match by goal text" : "No approved automations on this target";
+  select.append(blank);
+  for (const cap of approved) {
+    const option = document.createElement("option");
+    option.value = cap.name;
+    option.textContent = `${cap.title} (${cap.name})`;
+    select.append(option);
+  }
+}
+
+/** Drafts awaiting review on the selected target, so the approval flow is one click away. */
+function renderDraftBox() {
+  const box = $("draft-box");
+  const target = state.selectedTarget;
+  const drafts = state.capabilities.filter(
+    (cap) => cap.approval === "draft" && target && cap.origin === target.origin);
+  if (drafts.length === 0) { box.innerHTML = ""; return; }
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `<h4>Drafts awaiting review</h4>`;
+  for (const draft of drafts) {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.style.marginBottom = "6px";
+    const label = document.createElement("span");
+    label.style.flex = "1";
+    label.style.fontSize = "12.5px";
+    label.textContent = draft.title;
+    const review = document.createElement("button");
+    review.className = "small";
+    review.textContent = "Review";
+    review.addEventListener("click", () => void openReview(draft.name));
+    row.append(label, review);
+    card.append(row);
+  }
+  box.innerHTML = "";
+  box.append(card);
+}
+
+// ---------------------------------------------------------------- planning
+
+function clearPlan() {
+  state.plan = null;
+  state.planChosen = null;
+  $("plan-card").innerHTML = "";
+}
+
+function planRequestBody() {
+  const target = state.selectedTarget;
+  const body = { mode: state.mode, goal: $("goal").value.trim() };
+  const advEntry = $("adv-entry-url").value.trim();
+  if (target && !target.custom) body.targetId = target.id;
+  if (advEntry) body.entryUrl = advEntry;
+  else if (target?.custom) body.entryUrl = target.entryUrl;
+  if (state.mode === "replay_only" && $("ro-capability").value) body.capabilityName = $("ro-capability").value;
+  return body;
+}
+
+async function planRun() {
+  $("message").textContent = "";
+  const body = planRequestBody();
+  if (!body.goal && !body.capabilityName) {
+    $("message").textContent = "Describe the task first.";
+    return;
+  }
+  if (!body.targetId && !body.entryUrl) {
+    $("message").textContent = "Select a target system first.";
+    return;
+  }
+  const card = $("plan-card");
+  card.innerHTML = `<div class="card accent"><div class="headline">CHECKING AUTOMATIONS</div><div>Searching the approved automations for ${escapeHtml(state.selectedTarget?.name ?? "the target")}…</div></div>`;
+  try {
+    const response = await fetch("/api/automation/plan", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      card.innerHTML = "";
+      $("message").textContent = payload.error ?? `HTTP ${response.status}`;
+      return;
+    }
+    state.plan = payload;
+    renderPlanCard(payload);
+  } catch (error) {
+    card.innerHTML = "";
+    $("message").textContent = `Planning failed: ${error}`;
+  }
+}
+
+function renderPlanCard(plan) {
+  const card = $("plan-card");
+  card.innerHTML = "";
+  const decision = plan.decision;
+  if (decision.kind === "replay") return renderReplayPlan(plan, decision);
+  if (decision.kind === "choose") return renderChoosePlan(plan, decision);
+  if (decision.kind === "draft_exists") return renderDraftExistsPlan(plan, decision);
+  if (decision.kind === "discovery") return renderDiscoveryPlan(plan, decision);
+  if (decision.kind === "no_automation") return renderNoAutomationPlan(plan, decision);
+  card.innerHTML = `<div class="card bad"><div class="headline">NOT AVAILABLE</div><div>${escapeHtml(decision.reason ?? "")}</div></div>`;
+}
+
+function planLine(kind, glyph, text) {
+  return `<div class="plan-line ${kind}"><span class="g">${glyph}</span><span>${escapeHtml(text)}</span></div>`;
+}
+
+function renderReplayPlan(plan, decision) {
+  const cap = decision.capability;
+  const card = document.createElement("div");
+  card.className = "card ok";
+  const lines = [
+    planLine("good", "✓", `Target: ${plan.target.name}`),
+    planLine("good", "✓", "Existing automation found"),
+    planLine("good", "✓", `${cap.title} (${cap.name})`),
+  ];
+  if (decision.notes.permission) lines.push(planLine("note", "!", decision.notes.permission));
+  if (decision.notes.approval) lines.push(planLine("note", "!", decision.notes.approval));
+  if (decision.notes.changesTarget && !decision.notes.approval) {
+    lines.push(planLine("note", "!", "This automation changes the target system."));
+  }
+  lines.push(planLine("act", "→", "Deterministic Replay — AI is not used during this run"));
+  card.innerHTML = `<h4>Automation Plan</h4><div class="headline">AUTOMATION FOUND</div>${lines.join("")}
+    <div id="plan-inputs" style="margin-top:10px"></div>
+    <div id="plan-cred"></div>
+    <details class="adv" id="plan-adv"><summary>Run options</summary><div class="adv-body">
+      <div class="row"><div class="field"><label for="plan-tenant">Tenant</label><select id="plan-tenant"></select></div></div>
+    </div></details>
+    <div class="btns">
+      <button class="primary" id="plan-start">Run Automation</button>
+      <button id="plan-cancel">Cancel</button>
+    </div>`;
+  $("plan-card").append(card);
+
+  const inputsHolder = card.querySelector("#plan-inputs");
   for (const spec of cap.inputs) {
     const field = document.createElement("div");
     field.className = "field";
-    const id = `input-${spec.name}`;
-    field.innerHTML = `<label for="${id}">${escapeHtml(spec.name)}${spec.required ? " *" : ""}${spec.description ? ` — ${escapeHtml(spec.description)}` : ""}</label>`;
+    const id = `plan-input-${spec.name}`;
+    const label = document.createElement("label");
+    label.htmlFor = id;
+    label.textContent = `${spec.name}${spec.required ? " *" : ""}${spec.description ? ` — ${spec.description}` : ""}`;
     const input = document.createElement("input");
     input.id = id;
     input.type = "text";
-    input.dataset.input = spec.name;
+    input.dataset.planInput = spec.name;
     if (spec.example !== undefined) input.value = String(spec.example);
-    field.append(input);
-    inputs.append(field);
+    field.append(label, input);
+    inputsHolder.append(field);
   }
 
-  const tenant = $("tenant");
-  tenant.innerHTML = "";
-  for (const name of cap.tenants) {
+  const credHolder = card.querySelector("#plan-cred");
+  const profiles = plan.target.credentialProfiles ?? [];
+  if (profiles.length > 1) {
+    const field = document.createElement("div");
+    field.className = "field";
+    field.innerHTML = `<label for="plan-profile">Credentials — chosen before the run; Ledgerhand never switches accounts mid-run</label><select id="plan-profile"></select>
+      <div class="lede tiny" id="plan-cred-vars" style="margin:4px 0 0"></div>`;
+    const select = field.querySelector("select");
+    for (const profile of profiles) {
+      const option = document.createElement("option");
+      option.value = profile.id;
+      option.textContent = profile.description ? `${profile.label} — ${profile.description}` : profile.label;
+      select.append(option);
+    }
+    // Which env-var names the run will actually read - visible even for "As recorded",
+    // so nobody has to watch the sign-on screen to learn which account a run uses.
+    const varsLine = field.querySelector("#plan-cred-vars");
+    const showVars = () => {
+      const profile = profiles.find((candidate) => candidate.id === select.value);
+      const aliases = profile?.secretAliases ?? {};
+      const resolved = (cap.secretsRequired ?? []).map((name) => aliases[name] ?? name);
+      varsLine.textContent = resolved.length ? `Signs on with: ${[...new Set(resolved)].join(", ")} (env-var names — values are never stored)` : "";
+    };
+    select.addEventListener("change", showVars);
+    showVars();
+    credHolder.append(field);
+  } else if ((cap.secretsRequired ?? []).length) {
+    const note = document.createElement("div");
+    note.className = "lede tiny";
+    note.textContent = `Signs on with: ${cap.secretsRequired.join(", ")} (env-var names — values are never stored)`;
+    credHolder.append(note);
+  }
+
+  const tenantSelect = card.querySelector("#plan-tenant");
+  for (const name of cap.tenants ?? ["base"]) {
     const option = document.createElement("option");
     option.value = name;
     option.textContent = name;
-    tenant.append(option);
+    tenantSelect.append(option);
   }
 
-  $("operator-replay").checked = cap.hasIrreversibleStep;
+  card.querySelector("#plan-start").addEventListener("click", () => {
+    const inputs = {};
+    for (const input of card.querySelectorAll("[data-plan-input]")) {
+      if (input.value !== "") inputs[input.dataset.planInput] = input.value;
+    }
+    const profile = card.querySelector("#plan-profile");
+    void startRun({
+      kind: "replay",
+      capabilityPath: cap.file,
+      inputs,
+      tenant: tenantSelect.value === "base" ? undefined : tenantSelect.value,
+      // Always sent, so a sticky fault from a previous run is cleared rather than inherited.
+      inject: $("adv-inject").value || "none",
+      ...(plan.target.custom ? {} : { targetId: plan.target.id }),
+      ...(profile && profile.value !== "recorded" ? { credentialProfileId: profile.value } : {}),
+    });
+  });
+  card.querySelector("#plan-cancel").addEventListener("click", clearPlan);
 }
 
-function collectInputs() {
-  const values = {};
-  for (const input of document.querySelectorAll("#inputs [data-input]")) {
-    if (input.value !== "") values[input.dataset.input] = input.value;
+function renderChoosePlan(plan, decision) {
+  const card = document.createElement("div");
+  card.className = "card accent";
+  card.innerHTML = `<h4>Automation Plan</h4><div class="headline">SEVERAL AUTOMATIONS COULD MATCH</div>
+    <div>Ledgerhand will not guess. Pick the automation you mean:</div><div class="btns" style="flex-direction:column; align-items:stretch"></div>`;
+  const btns = card.querySelector(".btns");
+  for (const candidate of decision.candidates) {
+    const button = document.createElement("button");
+    button.style.textAlign = "left";
+    button.textContent = `${candidate.listing.title} (${candidate.listing.name})`;
+    button.addEventListener("click", () => {
+      void (async () => {
+        const response = await fetch("/api/automation/plan", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ...planRequestBody(), capabilityName: candidate.listing.name }),
+        });
+        const payload = await response.json();
+        if (response.ok) { state.plan = payload; renderPlanCard(payload); }
+      })();
+    });
+    btns.append(button);
   }
-  return values;
+  const cancel = document.createElement("button");
+  cancel.textContent = "Cancel";
+  cancel.addEventListener("click", clearPlan);
+  btns.append(cancel);
+  $("plan-card").append(card);
 }
 
-function parsePairs(text) {
-  const values = {};
-  for (const line of text.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    const index = trimmed.indexOf("=");
-    if (index <= 0) continue;
-    values[trimmed.slice(0, index).trim()] = trimmed.slice(index + 1).trim();
-  }
-  return values;
+function renderDraftExistsPlan(plan, decision) {
+  const card = document.createElement("div");
+  card.className = "card warn";
+  card.innerHTML = `<h4>Automation Plan</h4><div class="headline">DRAFT ALREADY EXISTS</div>
+    <div>Ledgerhand previously discovered this task, but no human has approved it yet: <strong>${escapeHtml(decision.draft.title)}</strong></div>
+    <div class="btns">
+      <button class="primary" id="draft-review">Review Existing Draft</button>
+      <button id="draft-rediscover">Run New Discovery</button>
+      <button id="draft-cancel">Cancel</button>
+    </div>`;
+  card.querySelector("#draft-review").addEventListener("click", () => void openReview(decision.draft.name));
+  card.querySelector("#draft-rediscover").addEventListener("click", () => startDiscoveryFromPlan(plan));
+  card.querySelector("#draft-cancel").addEventListener("click", clearPlan);
+  $("plan-card").append(card);
 }
+
+function renderDiscoveryPlan(plan, decision) {
+  const card = document.createElement("div");
+  card.className = "card accent";
+  const heading = plan.mode === "discover_only" ? "DISCOVERY" : "NEW AUTOMATION REQUIRED";
+  card.innerHTML = `<h4>Automation Plan</h4><div class="headline">${heading}</div>
+    ${plan.mode === "discover_only" ? "" : `<div>Ledgerhand does not have an approved automation for this task.</div>`}
+    <div style="margin-top:4px">Discovery lets the AI explore <strong>${escapeHtml(plan.target.name)}</strong> once, then records a <strong>draft</strong> you review and approve. It cannot leave ${escapeHtml(plan.target.origin)}.</div>
+    <dl class="kv-grid">
+      <dt>entry point</dt><dd class="mono">${escapeHtml(decision.entryUrl)}</dd>
+      <dt>credentials</dt><dd class="mono">${escapeHtml((decision.secretNames ?? []).join(", "))}</dd>
+    </dl>
+    <div class="field" style="margin-top:8px">
+      <label for="disc-inputs">Business inputs the task needs — one <code>key=value</code> per line (e.g. <code>memberId=10001</code>)</label>
+      <textarea id="disc-inputs" rows="2"></textarea>
+    </div>
+    <div class="btns">
+      <button class="primary" id="disc-start">Start Discovery</button>
+      <button id="disc-cancel">Cancel</button>
+    </div>`;
+  card.querySelector("#disc-inputs").value = $("adv-inputs").value;
+  card.querySelector("#disc-start").addEventListener("click", () => {
+    // The card's inputs are the source of truth for this run; keep Advanced in sync so a
+    // rediscovery from another card sees the same values.
+    $("adv-inputs").value = card.querySelector("#disc-inputs").value;
+    startDiscoveryFromPlan(plan);
+  });
+  card.querySelector("#disc-cancel").addEventListener("click", clearPlan);
+  $("plan-card").append(card);
+}
+
+function renderNoAutomationPlan(plan, decision) {
+  const card = document.createElement("div");
+  card.className = "card warn";
+  card.innerHTML = `<h4>Automation Plan</h4><div class="headline">NO APPROVED AUTOMATION</div>
+    <div>No approved automation exists for this task on ${escapeHtml(plan.target.name)}. Replay Only will not start Discovery on its own.</div>
+    <div class="btns">
+      ${decision.discoveryPossible ? '<button id="na-discover">Start Discovery</button>' : ""}
+      <button id="na-cancel">Cancel</button>
+    </div>`;
+  card.querySelector("#na-discover")?.addEventListener("click", () => startDiscoveryFromPlan(plan));
+  card.querySelector("#na-cancel").addEventListener("click", clearPlan);
+  $("plan-card").append(card);
+}
+
+function startDiscoveryFromPlan(plan) {
+  const secretsRaw = $("adv-secrets").value.trim();
+  const advEntry = $("adv-entry-url").value.trim();
+  void startRun({
+    kind: "discovery",
+    goal: $("goal").value.trim(),
+    ...(plan.target.custom ? { entryUrl: plan.target.entryUrl } : { targetId: plan.target.id }),
+    ...(advEntry ? { entryUrl: advEntry } : {}),
+    inputs: parsePairs($("adv-inputs").value),
+    maxSteps: Number($("adv-max-steps").value) || 25,
+    operator: $("adv-risky-discovery").checked,
+    ...(secretsRaw ? { secretNames: secretsRaw.split(",").map((name) => name.trim()).filter(Boolean) } : {}),
+  });
+}
+
+// ---------------------------------------------------------------- review + approve
+
+async function openReviewByFile(file) {
+  await refreshTargetsAndCapabilities();
+  const listing = state.capabilities.find((cap) => cap.file === file);
+  if (!listing) {
+    $("message").textContent = `Draft ${file} is not in the catalog yet — refresh and try again.`;
+    return;
+  }
+  return openReview(listing.name);
+}
+
+/**
+ * The human review that stands between a draft and the approved catalog. Everything shown
+ * here is the artifact itself - steps, checkpoints, credential names - because approving
+ * a capability means approving exactly what Replay will execute.
+ */
+async function openReview(name) {
+  const response = await fetch(`/api/capabilities/${encodeURIComponent(name)}`);
+  if (!response.ok) {
+    $("message").textContent = `Could not load ${name} for review.`;
+    return;
+  }
+  const { listing, capability } = await response.json();
+  const sheet = $("review-sheet");
+  const steps = capability.steps.map((step) => `
+    <li class="${step.risk === "irreversible" ? "irr" : ""}">
+      <span class="mono">${escapeHtml(step.id)}</span> ${escapeHtml(step.description ?? "")}
+      ${step.risk && step.risk !== "safe" ? `<span class="risk">${escapeHtml(step.risk)}${step.risk === "irreversible" ? " — will pause for approval" : ""}</span>` : ""}
+    </li>`).join("");
+  sheet.innerHTML = `
+    <div class="row" style="justify-content: space-between; margin-bottom: 8px">
+      <h1 style="margin:0">Review automation</h1>
+      <button class="small" id="review-close">Close</button>
+    </div>
+    <div class="card ${listing.approval === "draft" ? "warn" : "ok"}">
+      <div class="headline">${escapeHtml(capability.title)}</div>
+      <div>${escapeHtml(capability.description)}</div>
+      <dl class="kv-grid">
+        <dt>name</dt><dd class="mono">${escapeHtml(capability.name)} v${escapeHtml(capability.version)}</dd>
+        <dt>status</dt><dd>${listing.approval === "draft" ? "Draft — review required" : escapeHtml(listing.approval)}</dd>
+        <dt>allowed target</dt><dd class="mono">${escapeHtml((capability.policy.allowedOrigins ?? []).join(", "))}</dd>
+        <dt>credentials</dt><dd class="mono">${escapeHtml(capability.secretsRequired.join(", "))} <span style="color:var(--muted)">(env-var names — values are never stored)</span></dd>
+        <dt>inputs</dt><dd class="mono">${escapeHtml(capability.inputs.map((input) => input.name).join(", ") || "—")}</dd>
+        <dt>outputs</dt><dd class="mono">${escapeHtml(capability.outputs.map((output) => output.name).join(", ") || "—")}</dd>
+        <dt>recorded from</dt><dd class="mono">${escapeHtml(capability.provenance?.discoveryRunId ?? "—")}</dd>
+      </dl>
+    </div>
+    <h3>Steps Replay will perform (${capability.steps.length})</h3>
+    <ol class="step-list">${steps}</ol>
+    <div class="btns" style="display:flex; gap:8px; margin-top:12px">
+      ${listing.approval === "draft" ? '<button class="primary" id="review-approve">Approve automation</button>' : ""}
+      <button id="review-close2">Close</button>
+    </div>`;
+  $("review-overlay").hidden = false;
+  const close = () => { $("review-overlay").hidden = true; };
+  sheet.querySelector("#review-close").addEventListener("click", close);
+  sheet.querySelector("#review-close2").addEventListener("click", close);
+  sheet.querySelector("#review-approve")?.addEventListener("click", async () => {
+    const approveResponse = await fetch(`/api/capabilities/${encodeURIComponent(name)}/approve`, { method: "POST" });
+    if (!approveResponse.ok) {
+      const payload = await approveResponse.json().catch(() => ({}));
+      $("message").textContent = payload.error ?? "Approval failed.";
+      return;
+    }
+    await refreshTargetsAndCapabilities();
+    sheet.innerHTML = `
+      <div class="card ok">
+        <div class="headline">AUTOMATION APPROVED</div>
+        <div><strong>${escapeHtml(capability.title)}</strong> is now available for deterministic Replay — from Chat, Manual Run, and the API.</div>
+        <div class="btns">
+          <button class="primary" id="approved-run">Run Replay Now</button>
+          <button id="approved-close">Close</button>
+        </div>
+      </div>`;
+    sheet.querySelector("#approved-close").addEventListener("click", close);
+    sheet.querySelector("#approved-run").addEventListener("click", () => {
+      close();
+      showManual(true);
+      const owner = state.targets.find((target) => target.origin === listing.origin);
+      if (owner) selectTarget(owner);
+      setMode("replay_only");
+      renderReplayOnlyPicker();
+      $("ro-capability").value = capability.name;
+      void planRun();
+    });
+  });
+}
+
+// ---------------------------------------------------------------- launcher
 
 async function startRun(body) {
   $("message").textContent = "";
@@ -746,7 +1477,20 @@ async function startRun(body) {
     $("message").textContent = payload.error ?? `HTTP ${response.status}`;
     return;
   }
+  clearPlan();
   attach(payload.runId);
+}
+
+function parsePairs(text) {
+  const values = {};
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const index = trimmed.indexOf("=");
+    if (index <= 0) continue;
+    values[trimmed.slice(0, index).trim()] = trimmed.slice(index + 1).trim();
+  }
+  return values;
 }
 
 function escapeHtml(value) {
@@ -768,7 +1512,7 @@ function renderChatTurn(role, text, invocations = []) {
   log.querySelector(".empty")?.remove();
   const entry = document.createElement("div");
   entry.className = `chat-msg ${role}`;
-  entry.innerHTML = `<div class="who">${role === "user" ? "You" : "Assistant"}</div><div class="what">${renderInline(text)}</div>`;
+  entry.innerHTML = `<div class="who">${role === "user" ? "You" : "Ledgerhand"}</div><div class="what">${renderInline(text)}</div>`;
   for (const invocation of invocations) {
     const chip = document.createElement("button");
     chip.className = "chat-run";
@@ -785,6 +1529,10 @@ function renderChatTurn(role, text, invocations = []) {
 // When the assistant asks for a value it usually names the candidates (share IDs, reason
 // codes, branches). Surface them as one-tap chips that fill the input instead of retyping.
 function appendQuickReplies(entry, text) {
+  // A confirmation restates values the user already chose ("Shall I proceed?"). Offering
+  // those same values as tappable chips there reads as being asked to pick again - the only
+  // sensible replies to a confirmation are yes and no.
+  if (/confirm|shall i proceed|proceed\?|go ahead\?/i.test(text)) return;
   const found = [
     ...(text.match(/\b\d{6}-[A-Z0-9][A-Z0-9-]*\b/gi) ?? []),
     ...(text.match(/\b(FRAUD|LEGAL|DECEASED|MAIN-001|WEST-014|EAST-022)\b/g) ?? []),
@@ -810,6 +1558,7 @@ function appendQuickReplies(entry, text) {
 function invocationTone(status) {
   if (status === "success" || status === "business_outcome") return "ok";
   if (status === "escalated") return "warn";
+  if (status === "discovering") return "running";
   return "bad";
 }
 
@@ -842,10 +1591,16 @@ async function sendChat() {
   const pending = renderChatTurn("assistant", "Working — watch the live screen in the middle…");
   state.chatMessages.push({ role: "user", content: text });
   try {
+    const target = state.selectedTarget;
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ messages: state.chatMessages }),
+      body: JSON.stringify({
+        messages: state.chatMessages,
+        mode: state.mode,
+        // Same body shape every route resolves: a preset by id, a custom target by its URL.
+        ...(target ? (target.custom ? { entryUrl: target.entryUrl } : { targetId: target.id }) : {}),
+      }),
     });
     const payload = await response.json();
     pending.remove();
@@ -881,7 +1636,7 @@ async function boot() {
 
   state.config = await fetch("/api/config").then((r) => r.json());
 
-  const inject = $("inject");
+  const inject = $("adv-inject");
   for (const mode of state.config.injectionModes ?? ["none"]) {
     const option = document.createElement("option");
     option.value = mode;
@@ -889,24 +1644,31 @@ async function boot() {
     inject.append(option);
   }
 
-  $("entry-url").value = `${state.config.targetAppUrl}/t/alpha/msc/login`;
-  if (!state.config.discoveryAvailable) {
-    $("discover-warning").textContent = state.config.discoveryUnavailableReason;
-    for (const id of ["goal", "entry-url", "discover-secrets", "discover-inputs", "max-steps", "operator-discover", "run-discover"]) {
-      $(id).disabled = true;
-    }
+  await refreshTargetsAndCapabilities();
+  const savedTarget = state.targets.find((target) => target.id === localStorage.getItem("lh-target"));
+  selectTarget(savedTarget ?? state.targets.find((target) => target.automationStatus === "available") ?? state.targets[0]);
+  // The mode is a per-session choice, deliberately NOT persisted: reopening the console in a
+  // leftover Discover Only or Replay Only mode surprises the next conversation.
+  setMode("automatic");
+
+  $("target-search").addEventListener("input", renderTargetList);
+  document.addEventListener("click", (event) => {
+    const dd = $("target-dd");
+    if (dd.open && !dd.contains(event.target)) dd.open = false;
+  });
+  for (const button of $("mode-seg").querySelectorAll("button")) {
+    button.addEventListener("click", () => setMode(button.dataset.mode));
   }
 
-  state.capabilities = await fetch("/api/capabilities").then((r) => r.json());
-  const select = $("capability");
-  select.innerHTML = "";
-  for (const cap of state.capabilities) {
-    const option = document.createElement("option");
-    option.value = cap.file;
-    option.textContent = `${cap.title} (${cap.file})`;
-    select.append(option);
-  }
-  renderCapabilityMeta();
+  $("open-manual").addEventListener("click", () => showManual(true));
+  $("back-chat").addEventListener("click", () => showManual(false));
+  $("plan-run").addEventListener("click", () => void planRun());
+  $("adv-entry-url").addEventListener("change", () => {
+    const url = $("adv-entry-url").value.trim();
+    if (url) void detectTargetFromUrl(url);
+  });
+  $("ro-capability").addEventListener("change", clearPlan);
+  $("goal").addEventListener("input", () => { if (state.plan) clearPlan(); });
 
   // A refresh mid-run must not strand the stage on the idle overlay: reattach to
   // whatever is currently running so the live view resumes immediately.
@@ -915,7 +1677,6 @@ async function boot() {
   if (live) { state.autoAttached = live.runId; attach(live.runId); }
   startLiveWatch();
 
-  select.addEventListener("change", renderCapabilityMeta);
   $("verbose").addEventListener("change", applyVerbose);
 
   if (!state.config.chatAvailable) {
@@ -936,43 +1697,6 @@ async function boot() {
     $("chat-log").innerHTML = '<p class="empty">New conversation started.</p>';
   });
 
-  $("run-replay").addEventListener("click", () => {
-    const cap = selectedCapability();
-    if (!cap) return;
-    void startRun({
-      kind: "replay",
-      capabilityPath: cap.file,
-      inputs: collectInputs(),
-      tenant: $("tenant").value === "base" ? undefined : $("tenant").value,
-      // Always sent, so a sticky fault from a previous run is cleared rather than inherited.
-      inject: $("inject").value,
-      operator: $("operator-replay").checked,
-    });
-  });
-
-  // The two known targets use different credential env vars; follow the entry URL so the
-  // operator doesn't have to remember which pair is which.
-  $("entry-url").addEventListener("change", () => {
-    const secrets = $("discover-secrets");
-    const untouched = secrets.value === "APP_USER, APP_PASSWORD" || secrets.value === "MERIDIAN_OPERATOR, MERIDIAN_PASSWORD";
-    if (!untouched) return;
-    secrets.value = $("entry-url").value.includes("interface-hiring.com")
-      ? "MERIDIAN_OPERATOR, MERIDIAN_PASSWORD"
-      : "APP_USER, APP_PASSWORD";
-  });
-
-  $("run-discover").addEventListener("click", () => {
-    void startRun({
-      kind: "discovery",
-      goal: $("goal").value,
-      entryUrl: $("entry-url").value,
-      inputs: parsePairs($("discover-inputs").value),
-      maxSteps: Number($("max-steps").value),
-      operator: $("operator-discover").checked,
-      secretNames: $("discover-secrets").value.split(",").map((name) => name.trim()).filter(Boolean),
-    });
-  });
-
   $("stop").addEventListener("click", async () => {
     if (!state.runId) return;
     $("stop").disabled = true;
@@ -980,6 +1704,10 @@ async function boot() {
   });
 
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !$("review-overlay").hidden) {
+      $("review-overlay").hidden = true;
+      return;
+    }
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     const tag = document.activeElement?.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
