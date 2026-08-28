@@ -32,6 +32,13 @@ compiled into `capabilities/member-savings-balance.discovered.v1.json`.
 `07-replay-discovered-artifact-not-found` is the discovered artifact's own declared outcome
 firing.
 
+The Meridian runs (`10-*` through `20-*`) are described in the main README's demo path.
+`21-meridian-stability-sweep` is the reliability measurement: 20 consecutive replays of
+`meridian.member.balance` against the live hosted target on demo day, all 20 `SUCCESS` with
+identical typed outputs, median 14.8s, worst 17.3s. `sweep.csv` has the per-run verdicts,
+durations and run ids; the rest of the directory is the full evidence from the final run of
+the twenty.
+
 Runs 02 and 03 are the contrast the whole design is built around. Both are "we didn't get the
 balance", and they're deliberately different kinds of answer:
 

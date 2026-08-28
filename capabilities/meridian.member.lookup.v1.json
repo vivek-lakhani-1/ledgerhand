@@ -410,11 +410,11 @@
     "llmStepCount": 0
   },
   "stability": {
-    "runs": 4,
-    "successes": 4,
-    "businessOutcomes": 0,
+    "runs": 6,
+    "successes": 5,
+    "businessOutcomes": 1,
     "failures": 0,
-    "lastRunAt": "2026-08-27T20:12:54.902Z"
+    "lastRunAt": "2026-08-28T14:25:59.149Z"
   },
   "tenantOverrides": {}
 }

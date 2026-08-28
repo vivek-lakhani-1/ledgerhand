@@ -109,7 +109,7 @@ describe("the console with an empty or deleted capability catalog", () => {
   it("chat offers start_discovery as the only tool and starts it with the target's secrets", async () => {
     const model = new PlaybackModel([
       [{ type: "tool_use", id: "t1", name: "start_discovery", input: { goal: "find the balance for member 100234" } }],
-      [{ type: "text", text: "No automation covers this yet, so I started Discovery — watch the stage." }],
+      [{ type: "text", text: "No automation covers this yet, so I started Discovery - watch the stage." }],
     ]);
     const host = new StubDiscoveryHost();
     const booted = await boot({ model, host });

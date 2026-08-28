@@ -1,0 +1,17 @@
+{
+  "status": "success",
+  "runId": "replay-fb55f4bd1d4b",
+  "capability": {
+    "id": "cap_meridian_member_balance",
+    "version": "1.0.0"
+  },
+  "outputs": {
+    "memberName": "Turing, Alan",
+    "primaryShareId": "1****7-S0001",
+    "primaryShareBalance": 5,
+    "primaryShareStatus": "OPEN"
+  },
+  "stepsExecuted": 6,
+  "durationMs": 12995,
+  "evidenceDir": "evidence/runs/replay-fb55f4bd1d4b"
+}

@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.0.0",
-  "id": "cap_meridian_member_shares",
-  "name": "meridian.member.shares",
-  "title": "List all of a member's shares",
+  "id": "cap_meridian_member_balance",
+  "name": "meridian.member.balance",
+  "title": "Read a member's shares and balances",
   "version": "1.0.0",
-  "description": "Signs on to Meridian Core, opens the member record, and returns the full SHARES / BALANCES table - every share's ID, type, balance, and status - so a caller can present real options instead of guessing share IDs.",
+  "description": "Signs on to Meridian Core, opens the member record by member number, and reads the member's name, e-mail, and primary share balance and status.",
   "approval": "approved",
   "target": {
     "surface": "legacy-web",
@@ -31,12 +31,12 @@
       "name": "branch",
       "type": "enum",
       "required": false,
+      "description": "Branch to sign on at: MAIN-001 (Main Office), WEST-014 (Westside), EAST-022 (Eastgate). Defaults to MAIN-001.",
       "enumValues": [
         "MAIN-001",
         "WEST-014",
         "EAST-022"
       ],
-      "description": "Branch to sign on at: MAIN-001 (Main Office), WEST-014 (Westside), EAST-022 (Eastgate). Defaults to MAIN-001.",
       "sensitivity": "public",
       "example": "MAIN-001",
       "default": "MAIN-001"
@@ -53,6 +53,7 @@
         "kind": "text_of",
         "target": {
           "role": "cell",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -68,25 +69,88 @@
       }
     },
     {
-      "name": "sharesTable",
+      "name": "primaryShareId",
       "type": "string",
+      "description": "Share ID of the first share listed on the member record.",
       "required": true,
       "sensitivity": "public",
-      "description": "The SHARES / BALANCES table text: one row per share with Share ID, Type, Balance, Status.",
       "source": {
         "kind": "text_of",
         "target": {
-          "role": "generic",
+          "role": "cell",
+          "nameMatch": "exact",
           "framePath": [],
+          "scope": {
+            "nth": 0
+          },
           "strategies": [
             {
-              "kind": "css",
-              "selector": "table[border=\"1\"]",
-              "confidence": 0.8,
+              "kind": "table_cell",
+              "rowMatch": "$",
+              "columnHeader": "Share ID",
+              "confidence": 0.85,
               "origin": "derived"
             }
           ],
-          "description": "The SHARES / BALANCES table on the member record"
+          "description": "Share ID cell of the first share row"
+        },
+        "transform": "trim"
+      }
+    },
+    {
+      "name": "primaryShareBalance",
+      "type": "currency",
+      "description": "Balance of the first share listed on the member record.",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "nameMatch": "exact",
+          "framePath": [],
+          "scope": {
+            "nth": 0
+          },
+          "strategies": [
+            {
+              "kind": "table_cell",
+              "rowMatch": "$",
+              "columnHeader": "Balance",
+              "confidence": 0.85,
+              "origin": "derived"
+            }
+          ],
+          "description": "Balance cell of the first share row"
+        },
+        "transform": "currency_to_number"
+      }
+    },
+    {
+      "name": "primaryShareStatus",
+      "type": "string",
+      "description": "Status of the first share listed on the member record, such as OPEN or HOLD.",
+      "required": true,
+      "sensitivity": "public",
+      "source": {
+        "kind": "text_of",
+        "target": {
+          "role": "cell",
+          "nameMatch": "exact",
+          "framePath": [],
+          "scope": {
+            "nth": 0
+          },
+          "strategies": [
+            {
+              "kind": "table_cell",
+              "rowMatch": "$",
+              "columnHeader": "Status",
+              "confidence": 0.85,
+              "origin": "derived"
+            }
+          ],
+          "description": "Status cell of the first share row"
         },
         "transform": "trim"
       }
@@ -104,6 +168,7 @@
         "type": "type",
         "target": {
           "role": "textbox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -119,51 +184,65 @@
         "value": "{{secrets.MERIDIAN_OPERATOR}}",
         "clearFirst": true
       },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "control_present",
         "target": {
           "role": "textbox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
               "kind": "attribute",
               "attr": "name",
-              "value": "password",
+              "value": "«redacted:secret»",
               "confidence": 0.98,
               "origin": "captured"
             }
           ],
-          "description": "Operator password field"
+          "description": "Operator «redacted:secret» field"
         }
-      }
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
       "id": "s2",
-      "description": "Enter the operator password",
+      "description": "Enter the operator «redacted:secret»",
       "action": {
         "type": "type",
         "target": {
           "role": "textbox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
               "kind": "attribute",
               "attr": "name",
-              "value": "password",
+              "value": "«redacted:secret»",
               "confidence": 0.98,
               "origin": "captured"
             }
           ],
-          "description": "Operator password field"
+          "description": "Operator «redacted:secret» field"
         },
         "value": "{{secrets.MERIDIAN_PASSWORD}}",
         "clearFirst": true
       },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "control_present",
         "target": {
           "role": "button",
           "name": "Sign On",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -177,7 +256,14 @@
           ],
           "description": "Sign On button"
         }
-      }
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
       "id": "s2b",
@@ -186,6 +272,7 @@
         "type": "select",
         "target": {
           "role": "combobox",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -206,6 +293,7 @@
         "kind": "control_present",
         "target": {
           "role": "button",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -221,7 +309,13 @@
         },
         "description": "Sign-on form still on screen after choosing the branch"
       },
-      "timeoutMs": 8000
+      "timeoutMs": 8000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
       "id": "s3",
@@ -231,6 +325,7 @@
         "target": {
           "role": "button",
           "name": "Sign On",
+          "nameMatch": "exact",
           "framePath": [],
           "strategies": [
             {
@@ -245,10 +340,8 @@
           "description": "Sign On button"
         }
       },
-      "retries": {
-        "max": 1,
-        "backoffMs": 500
-      },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "all",
         "of": [
@@ -266,7 +359,14 @@
           }
         ],
         "description": "Main menu shown and the status bar confirms the requested branch"
-      }
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 1,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
       "id": "s4",
@@ -275,28 +375,44 @@
         "type": "navigate",
         "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}"
       },
-      "retries": {
-        "max": 1,
-        "backoffMs": 500
-      },
+      "risk": "safe",
+      "preconditions": [],
       "postcondition": {
         "kind": "text_present",
         "text": "MEMBER RECORD",
         "match": "contains",
         "framePath": [],
         "timeoutMs": 8000
-      }
+      },
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 1,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     },
     {
       "id": "s5",
-      "description": "Read the full SHARES / BALANCES table",
+      "description": "Read the member's shares and balances",
       "action": {
         "type": "extract",
         "outputs": [
           "memberName",
-          "sharesTable"
+          "primaryShareId",
+          "primaryShareBalance",
+          "primaryShareStatus"
         ]
-      }
+      },
+      "risk": "safe",
+      "preconditions": [],
+      "timeoutMs": 15000,
+      "retries": {
+        "max": 0,
+        "backoffMs": 500
+      },
+      "recover": [],
+      "onFailure": "fail"
     }
   ],
   "outcomes": [
@@ -339,6 +455,7 @@
           "target": {
             "role": "link",
             "name": "Continue",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
@@ -379,6 +496,7 @@
           "type": "type",
           "target": {
             "role": "textbox",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
@@ -398,17 +516,18 @@
           "type": "type",
           "target": {
             "role": "textbox",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
                 "kind": "attribute",
                 "attr": "name",
-                "value": "password",
+                "value": "«redacted:secret»",
                 "confidence": 0.98,
                 "origin": "captured"
               }
             ],
-            "description": "Operator password field"
+            "description": "Operator «redacted:secret» field"
           },
           "value": "{{secrets.MERIDIAN_PASSWORD}}",
           "clearFirst": true
@@ -417,6 +536,7 @@
           "type": "select",
           "target": {
             "role": "combobox",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
@@ -436,6 +556,7 @@
           "target": {
             "role": "button",
             "name": "Sign On",
+            "nameMatch": "exact",
             "framePath": [],
             "strategies": [
               {
@@ -491,8 +612,8 @@
   },
   "provenance": {
     "recordedAt": "2026-08-27T17:05:20.000Z",
-    "goal": "List every share on a member's record with type, balance and status",
-    "model": "hand-curated",
+    "goal": "Sign on to Meridian Core as the operator, look up the member by member number, open the member record, and read the member's name and the balance of their Regular Shares (S0001) share",
+    "model": "claude-opus-5",
     "discoveryRunId": "discover-26fe8cc8e560",
     "surfaceSignature": {
       "browser": "chromium",
@@ -501,11 +622,72 @@
     "llmStepCount": 16
   },
   "stability": {
-    "runs": 14,
-    "successes": 11,
-    "businessOutcomes": 1,
-    "failures": 2,
-    "lastRunAt": "2026-08-28T13:44:31.599Z"
+    "runs": 50,
+    "successes": 39,
+    "businessOutcomes": 7,
+    "failures": 4,
+    "lastRunAt": "2026-08-28T14:22:43.868Z"
   },
-  "tenantOverrides": {}
+  "tenantOverrides": {
+    "demo-maintenance": {
+      "steps": {
+        "s4": {
+          "action": {
+            "type": "navigate",
+            "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}?inject=maintenance"
+          },
+          "risk": "safe",
+          "preconditions": [],
+          "timeoutMs": 15000,
+          "retries": {
+            "max": 0,
+            "backoffMs": 500
+          },
+          "recover": [],
+          "onFailure": "fail"
+        }
+      },
+      "note": "Demo variant: the member-record navigation forces a 503 maintenance interstitial so the dismiss_maintenance recovery can be shown deterministically."
+    },
+    "demo-timeout": {
+      "steps": {
+        "s4": {
+          "action": {
+            "type": "navigate",
+            "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}?inject=timeout"
+          },
+          "risk": "safe",
+          "preconditions": [],
+          "timeoutMs": 15000,
+          "retries": {
+            "max": 0,
+            "backoffMs": 500
+          },
+          "recover": [],
+          "onFailure": "fail"
+        }
+      },
+      "note": "Demo variant: the member-record navigation forces a 440 session timeout so the reauthenticate recovery can be shown deterministically."
+    },
+    "demo-server-error": {
+      "steps": {
+        "s4": {
+          "action": {
+            "type": "navigate",
+            "url": "https://web-sample.interface-hiring.com/members/{{inputs.memberNumber}}?inject=server"
+          },
+          "risk": "safe",
+          "preconditions": [],
+          "timeoutMs": 15000,
+          "retries": {
+            "max": 0,
+            "backoffMs": 500
+          },
+          "recover": [],
+          "onFailure": "fail"
+        }
+      },
+      "note": "Demo variant: the member-record navigation forces a hard 500 application error, which is a hard failure rather than a recoverable condition."
+    }
+  }
 }

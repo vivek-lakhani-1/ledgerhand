@@ -958,7 +958,7 @@ async function findSurfaceError(surface: Surface): Promise<string | null> {
     if (document && document.status >= 500) {
       const observation = await surface.observe().catch(() => null);
       const body = observation?.frames.map((frame) => frame.text).join(" ").trim().slice(0, 300);
-      return `HTTP ${document.status} from ${document.url}${body ? ` — ${body}` : ""}`;
+      return `HTTP ${document.status} from ${document.url}${body ? ` - ${body}` : ""}`;
     }
   } catch {
     // Fall through to content-based detection below.
@@ -967,7 +967,7 @@ async function findSurfaceError(surface: Surface): Promise<string | null> {
   try {
     const observation = await surface.observe();
     const text = observation.frames.map((frame) => frame.text).join(" ");
-    const match = text.match(/APPLICATION ERROR\s*[-—]\s*REF\s+\S+/i);
+    const match = text.match(/APPLICATION ERROR\s*[--]\s*REF\s+\S+/i);
     if (match) return match[0];
   } catch {
     return null;

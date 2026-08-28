@@ -3,7 +3,7 @@ node_modules/
 *.log
 dist/
 .playwright/
-# Transient run output only. The curated demo runs under evidence/runs/ ARE committed —
+# Transient run output only. The curated demo runs under evidence/runs/ ARE committed -
 # they are a required deliverable (a saved artifact plus logs from a discovery run and a
 # replay run), not build noise.
 evidence/runs/tmp-*
@@ -14,7 +14,7 @@ evidence/runs/discover-*
 .DS_Store
 # Generated documentation; rebuild rather than commit.
 *.pdf
-# Demo-prep discovery notes — local planning scratch, not a deliverable.
+# Demo-prep discovery notes - local planning scratch, not a deliverable.
 meridian-demo-discovery/
 # Local demo test-script cheat sheet, not a deliverable.
 test.txt
