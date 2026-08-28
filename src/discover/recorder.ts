@@ -106,11 +106,21 @@ export function recordCapability(options: RecorderOptions): CapabilityValue {
     sensitivity: "public",
     source: { kind: "text_of", target: output.target, transform: output.transform },
   }));
-  const validationOutput = defaultValidationOutput();
-  if (!outputSpecs.some((output) => output.name === validationOutput.name)) outputSpecs.push(validationOutput);
+  // The default validation-message output belongs to the VALIDATION_ERROR outcome, where a
+  // rejection page is guaranteed to hold one - NOT to the top-level outputs, where marking it
+  // required would fail every happy-path replay for lacking an error message to extract.
+  // (defaultOutcomes wires it in below; nothing is added to outputSpecs here.)
 
   const actionEntries = retained.filter((entry) => compilableTools.has(entry.tool));
-  const steps = actionEntries.map((entry, index) => compileStep(entry, index, options.trace, inputMap, options.inputs, substitutions, options));
+  const compiledSteps = actionEntries.map((entry, index) => compileStep(entry, index, options.trace, inputMap, options.inputs, substitutions, options));
+  // Captured descriptors carry evidence of the example record the run happened to use - a
+  // table_cell strategy scoped to row "100234-S0001", a postcondition naming the example
+  // member. Canonicalize every such literal to an input reference: replay resolves it back
+  // per invocation, so the same strategy locates the right row for every caller instead of
+  // only the one the recording saw. (A literal that coincides with the supplied value
+  // resolves to the identical string, so the rewrite is never worse than the original.)
+  const steps = parameterizeDeep(compiledSteps, options.inputs, inputMap, substitutions);
+  const parameterizedOutputs = parameterizeDeep(outputSpecs, options.inputs, inputMap, substitutions);
 
   const lastObservation = lastObservationOf(options.trace);
   const finishCheckpoint = normalizeCheckpoint(options.finish?.successCriterion);
@@ -135,14 +145,14 @@ export function recordCapability(options: RecorderOptions): CapabilityValue {
 
   const outcomes = [
     ...declaredOutcomes.filter((outcome) => !shadowsSuccess.includes(outcome)),
-    ...defaultOutcomes(outputSpecs),
+    ...defaultOutcomes(parameterizedOutputs),
   ].filter((outcome, index, all) => all.findIndex((candidate) => candidate.code === outcome.code) === index);
   // The step that lands on the page holding the data should assert that the page's STRUCTURE
   // is there, not the values it happens to show. A model naturally asserts what it can see
   // ("Ada Exampleton"), which over-fits the artifact to the record it was recorded against and
   // fails for every other member. Assert the extraction target instead - reaching the cell is
   // the real precondition for extracting from it, and it is member-independent.
-  const dataTarget = outputSpecs.find((output) => output.source.target)?.source.target;
+  const dataTarget = parameterizedOutputs.find((output) => output.source.target)?.source.target;
   const lastStateChanging = [...steps].reverse().find((step) => step.postcondition && step.action.type !== "type" && step.action.type !== "select");
   if (dataTarget && lastStateChanging && lastStateChanging.postcondition?.kind === "text_present") {
     substitutions.push(
@@ -170,6 +180,14 @@ export function recordCapability(options: RecorderOptions): CapabilityValue {
       description: "the declared outputs are present and extractable",
     });
   }
+  // Whatever shape the checkpoint ends up in, its captured evidence (URLs, frame paths,
+  // content snippets) may still embed the example values this run happened to use - the
+  // descriptor of a cell on /members/100234 carries that URL. Canonicalize them to input
+  // references, which replay resolves back per invocation; leaving them literal would fail
+  // lint and over-fit the capability to the one record it was recorded against.
+  successCheckpoint = CheckpointSchema.parse(
+    parameterizeDeep(successCheckpoint, options.inputs, inputMap, substitutions),
+  );
 
   const stepsHighestRisk = highestStepRisk(steps);
   const policyConfig = options.policy?.config;
@@ -191,7 +209,7 @@ export function recordCapability(options: RecorderOptions): CapabilityValue {
       viewport,
     },
     inputs,
-    outputs: outputSpecs,
+    outputs: parameterizedOutputs,
     secretsRequired: options.secretNames?.length ? options.secretNames : ["APP_USER", "APP_PASSWORD"],
     steps,
     outcomes,
@@ -204,7 +222,10 @@ export function recordCapability(options: RecorderOptions): CapabilityValue {
       maxRisk: maxRisk(stepsHighestRisk, policyConfig?.maxRisk ?? "safe"),
       requireApprovalFor: policyConfig?.requireApprovalFor ?? ["irreversible"],
       maxSteps: policyConfig?.maxSteps ?? 60,
-      timeoutMs: policyConfig?.timeoutMs ?? 120000,
+      // The recorder's policyConfig is the DISCOVERY policy, whose wall clock is sized for
+      // a model-driven exploration. A deterministic replay of the same flow is far faster,
+      // so the artifact never inherits a discovery-sized clock.
+      timeoutMs: Math.min(policyConfig?.timeoutMs ?? 120000, 120000),
     },
     provenance: {
       recordedAt: new Date().toISOString(),
@@ -297,12 +318,23 @@ function defaultOutcomes(outputs: OutputSpec[]): Array<{
   terminal: boolean;
   outputs: OutputSpec[];
 }> {
-  const validation = outputs.find((output) => output.name === "validationMessage");
+  const validation = outputs.find((output) => output.name === "validationMessage") ?? defaultValidationOutput();
   return [
     {
       code: "MEMBER_NOT_FOUND",
       description: "No member record was found for the requested identifier.",
-      detect: CheckpointSchema.parse({ kind: "text_present", text: "No member record found", match: "contains" }),
+      // Different surfaces phrase the same business outcome differently ("No member records
+      // matched your search." on a search screen, "RECORD NOT FOUND" on a direct-URL miss).
+      // The default detector accepts the phrasings we have seen; the reviewer prunes it.
+      detect: CheckpointSchema.parse({
+        kind: "any",
+        of: [
+          { kind: "text_present", text: "No member record found", match: "contains" },
+          { kind: "text_present", text: "No member records matched", match: "contains" },
+          { kind: "text_present", text: "RECORD NOT FOUND", match: "contains" },
+          { kind: "text_present", text: "Record not found", match: "contains" },
+        ],
+      }),
       terminal: true,
       outputs: [],
     },
@@ -543,15 +575,68 @@ function parameterizeLiteral(value: string, inputs: Record<string, unknown>, inp
       return replacement;
     }
   }
+  // A run started from chat supplies no input values - the model types the example value it
+  // declared. Matching declared examples too is what keeps such a recording parameterized;
+  // without it the artifact would replay the example member for every caller.
+  for (const [name, spec] of inputMap) {
+    if (spec.example !== undefined && spec.example !== null && String(spec.example) === value) {
+      const replacement = "{{inputs." + name + "}}";
+      substitutions.push("Replaced typed example literal " + value + " with " + replacement);
+      return replacement;
+    }
+  }
+  return value;
+}
+
+/**
+ * Recursively replaces occurrences of supplied input values in every string field of a
+ * checkpoint (or any captured evidence) with {{inputs.name}} references. Values shorter
+ * than 3 characters are left alone - "1" appears everywhere and would shred the evidence.
+ */
+function parameterizeDeep<T>(value: T, inputs: Record<string, unknown>, inputMap: Map<string, ParamSpec>, substitutions: string[]): T {
+  if (typeof value === "string") {
+    let out: string = value;
+    // A run started from chat supplies no input values - the model picks example values as
+    // it declares each input - so both sources name literals the evidence may embed.
+    const literals = new Map<string, string>();
+    for (const [name, supplied] of Object.entries(inputs)) {
+      if (inputMap.has(name)) literals.set(String(supplied), name);
+    }
+    for (const [name, spec] of inputMap) {
+      if (spec.example !== undefined && spec.example !== null) literals.set(String(spec.example), name);
+    }
+    for (const [literal, name] of literals) {
+      if (literal.length < 3 || !out.includes(literal)) continue;
+      out = out.split(literal).join("{{inputs." + name + "}}");
+      const note = `Replaced checkpoint-evidence literal "${literal}" with {{inputs.${name}}}`;
+      if (!substitutions.includes(note)) substitutions.push(note);
+    }
+    return out as unknown as T;
+  }
+  if (Array.isArray(value)) return value.map((item) => parameterizeDeep(item, inputs, inputMap, substitutions)) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, parameterizeDeep(item, inputs, inputMap, substitutions)]),
+    ) as T;
+  }
   return value;
 }
 
 function parameterizeUrl(url: string, inputs: Record<string, unknown>, inputMap: Map<string, ParamSpec>, substitutions: string[], options: RecorderOptions): string {
   return url.split("/").map((segment) => {
+    const decoded = decodeURIComponent(segment);
     for (const [name, supplied] of Object.entries(inputs)) {
       if (!inputMap.has(name)) continue;
-      const decoded = decodeURIComponent(segment);
       if (String(supplied) === segment || String(supplied) === decoded) {
+        const replacement = "{{inputs." + name + "}}";
+        substitutions.push("Replaced URL path segment " + segment + " with " + replacement);
+        return replacement;
+      }
+    }
+    // Same example-value rule as parameterizeLiteral, for runs that supplied no inputs.
+    for (const [name, spec] of inputMap) {
+      if (spec.example === undefined || spec.example === null) continue;
+      if (String(spec.example) === segment || String(spec.example) === decoded) {
         const replacement = "{{inputs." + name + "}}";
         substitutions.push("Replaced URL path segment " + segment + " with " + replacement);
         return replacement;

@@ -50,6 +50,41 @@ describe("recorder", () => {
     expect(outputPath).toBe(path.join(root, "capabilities", "member.savings_balance.lookup.v1.0.0.json"));
     expect(JSON.parse(fs.readFileSync(outputPath, "utf8"))).toMatchObject({ name: "member.savings_balance.lookup" });
   });
+
+  it("parameterizes declared example values when the run supplied no inputs (a chat-started discovery)", () => {
+    // A discovery launched from chat carries inputs: {} - the model picks example values as
+    // it declares each input and then types those examples. The recording must still come
+    // out parameterized, or the artifact would replay the example member for every caller.
+    const capability = recordCapability({
+      trace: cannedTrace(),
+      goal: "Look up a member savings balance",
+      entryUrl: ENTRY_URL,
+      inputs: {},
+      finish: { summary: "Balance is visible", successCriterion: "Balance 1250.75" },
+      runId: "discovery-chat",
+      name: "member.savings_balance.chat",
+    });
+    expect(capability.steps[1].action).toMatchObject({ type: "type", value: "{{inputs.memberId}}" });
+    expect(capability.steps[0].action).toMatchObject({ type: "navigate", url: ORIGIN + "/t/alpha/msc/member/{{inputs.memberId}}" });
+    expect(lintCapability(Capability.parse(capability))).toEqual([]);
+  });
+
+  it("keeps the default validation message on the VALIDATION_ERROR outcome, not the success outputs", () => {
+    const capability = recordCapability({
+      trace: cannedTrace(),
+      goal: "Look up a member savings balance",
+      entryUrl: ENTRY_URL,
+      inputs: { memberId: "10001" },
+      finish: { summary: "Balance is visible", successCriterion: "Balance 1250.75" },
+      runId: "discovery-canned",
+      name: "member.savings_balance.lookup",
+    });
+    // A required top-level validationMessage would fail every happy-path replay: success
+    // pages have no validation message to extract. It belongs to the rejection outcome.
+    expect(capability.outputs.map((output) => output.name)).not.toContain("validationMessage");
+    const validationOutcome = capability.outcomes.find((outcome) => outcome.code === "VALIDATION_ERROR");
+    expect(validationOutcome?.outputs.map((output) => output.name)).toContain("validationMessage");
+  });
 });
 
 function cannedTrace(): DiscoveryTraceEntry[] {
