@@ -112,3 +112,27 @@ driver, not a second product.
   settings screen into the console's inject dropdown (today the deterministic `demo-*` tenant
   variants on the balance artifact cover the same ground with zero shared-state risk on a
   hosted target).
+
+## Postscript: what a from-scratch rehearsal exposed
+
+The day before the demo I emptied `capabilities/` and drove the whole loop again purely from the
+chat front door — no CLI, no hand-authored artifacts. The rehearsal surfaced three real defects
+in the core, each now fixed and tested (`evidence/runs/19-*` and `20-*` hold the passing runs):
+
+- **Discovery inherited replay's wall clock.** The 2-minute policy default is sized for a
+  deterministic replay; a live-site exploration with a model in the loop died on it mid-run.
+  Discovery now carries its own 10-minute clock, and the recorder no longer copies a
+  discovery-sized timeout into the recorded artifact's replay policy.
+- **Chat-started recordings weren't parameterized.** A discovery launched from chat supplies no
+  input values — the model types the example values it declares — and the recorder only matched
+  *supplied* values when canonicalizing. The recording typed the example member number for every
+  future caller and scoped its table-cell strategies to the example row. Canonicalization now
+  matches declared examples too, and runs deeply over steps, extraction targets, and the success
+  checkpoint. The hand-cleaning step the original recordings needed is exactly what this
+  automates.
+- **Two recorder defaults were wrong against the live target.** The default required
+  `validationMessage` output belongs on the `VALIDATION_ERROR` outcome (a success page has no
+  error message to extract, so every happy-path replay failed), and the default not-found
+  detector missed Meridian's actual phrasings ("No member records matched", "RECORD NOT FOUND"),
+  which turned a legitimate business outcome into a hard checkpoint failure. Both defaults now
+  reflect what the surfaces actually say, as reviewable `any`-composites.

@@ -9,7 +9,38 @@ The target app is a local stand-in for a legacy bank console. It's built to be a
 purpose - framesets, table layout, no test ids - rather than to look like a real banking
 service. A catalog and CLI expose saved capabilities so an agent could call them by name.
 
-Design notes are in [REPORT.md](REPORT.md). Saved runs are in [evidence/](evidence/).
+Design notes are in [REPORT.md](REPORT.md). Saved runs are in [evidence/](evidence/). The suite
+is 162 automated tests across 24 files plus a strict typecheck (`npm test`, `npm run typecheck`).
+
+```mermaid
+flowchart LR
+    subgraph Drivers
+        CHAT[Chat front door]
+        API[Capability API]
+        CLI[CLI]
+    end
+    subgraph Core
+        PLAN[Matcher / Planner]
+        REPLAY[Deterministic Replay<br/>no model in the loop]
+        DISC[Discovery<br/>model explores once]
+        POLICY[Policy gate<br/>allowlist · risk · redaction]
+    end
+    CHAT --> PLAN
+    API --> REPLAY
+    CLI --> REPLAY
+    PLAN -->|approved automation| REPLAY
+    PLAN -->|unknown task| DISC
+    DISC -->|draft artifact| REVIEW[Human review<br/>approve → catalog]
+    REVIEW --> REPLAY
+    REPLAY --> POLICY
+    DISC --> POLICY
+    POLICY --> TARGET[(Legacy UI<br/>MERIDIAN CORE)]
+    REPLAY -->|stuck / risky| OPERATOR[Operator console<br/>human takes the live session]
+    OPERATOR -->|resume| REPLAY
+```
+
+Every driver converges on the same replay engine behind the same policy gate: the chatbot cannot
+reach anything the API would refuse, and neither can skip a draft's human review.
 
 ## Setup
 
@@ -71,7 +102,9 @@ offered for review instead of silently rediscovering. `Replay Only`: approved au
 if none matches, the console says so and Discovery is a separate, optional button. `Discover
 Only`: always explore and record a new draft.
 
-**Chat** is the front door: describe the task, and Ledgerhand reports whether it already knows it
+**Chat** is the front door: questions that expect a choice — confirming an irreversible action,
+picking a share — arrive with one-tap reply buttons, so a confirmation is a click on
+"Yes, proceed" rather than something typed. Describe the task, and Ledgerhand reports whether it already knows it
 ("I found an existing automation: `meridian.member.balance`. Running it now.") or offers
 Discovery. The chat's tool catalog is scoped to the selected target, and it uses the same
 guardrailed invoke path as every other caller. **Manual Run** (compact button, top left) swaps
@@ -146,6 +179,8 @@ The function surface is covered by these artifacts:
 
 Start the console (`ledgerhand console --port 4620`) for the watchable version of everything
 below, or run the commands as they are. Seed members: 100234, 100987, 101555, 102777, 103001.
+For the shortest version, `bash scripts/demo.sh` runs a success, a business outcome, and a
+recovered fault back to back.
 
 1. Balance check (happy path):
 
@@ -226,8 +261,21 @@ below, or run the commands as they are. Seed members: 100234, 100987, 101555, 10
    *"Transfer $5 from 100987-S0001 to 100987-S0070, memo demo"*. Each reply cites the run it
    invoked; clicking the chip shows that run's timeline, frame, and evidence.
 
+8. From scratch — the discovery fallback. Delete (or move aside) everything in `capabilities/`
+   and ask the chat for a balance anyway. The console reports that no automation exists and
+   starts Discovery on the spot; the run records a draft, the draft is reviewed and approved,
+   and the same request then replays deterministically — for any member, not just the one the
+   recording saw. `evidence/runs/19-fresh-discovery-from-chat` and
+   `evidence/runs/20-fresh-draft-replay-and-notfound` are one full pass of exactly that,
+   including the cross-member replay and a `MEMBER_NOT_FOUND` business outcome.
+
 Saved Meridian runs — one per demonstration above, including the discovery recording — are
-committed under `evidence/runs/10-meridian-*` through `18-meridian-*` as the offline backup.
+committed under `evidence/runs/10-meridian-*` through `20-*` as the offline backup.
+
+A note on the operator console's trust model: it binds to `127.0.0.1` and carries no
+authentication — whoever can reach the loopback interface can approve an intervention. That is
+an accepted cut for a single-operator demo; a deployment would put an authenticated,
+audit-logged surface in front of it (the intervention records already capture who-did-what).
 
 ## Exact demo path (local stand-in app)
 
