@@ -1507,7 +1507,7 @@ function renderInline(text) {
     .replace(/\n/g, "<br>");
 }
 
-function renderChatTurn(role, text, invocations = []) {
+function renderChatTurn(role, text, invocations = [], options = []) {
   const log = $("chat-log");
   log.querySelector(".empty")?.remove();
   const entry = document.createElement("div");
@@ -1520,7 +1520,22 @@ function renderChatTurn(role, text, invocations = []) {
     if (invocation.runId) chip.addEventListener("click", () => attach(invocation.runId));
     entry.append(chip);
   }
-  if (role === "assistant") appendQuickReplies(entry, text);
+  if (role === "assistant" && options.length > 0) {
+    // Structured options from the model: one tap answers the question - a confirmation is a
+    // click on "Yes, proceed", a share pick is a click on the share - no retyping.
+    const row = document.createElement("div");
+    row.className = "quick-row structured";
+    for (const option of options) {
+      const chip = document.createElement("button");
+      chip.className = "quick";
+      chip.textContent = option;
+      chip.addEventListener("click", () => void sendChat(option));
+      row.append(chip);
+    }
+    entry.append(row);
+  } else if (role === "assistant") {
+    appendQuickReplies(entry, text);
+  }
   log.append(entry);
   log.scrollTop = log.scrollHeight;
   return entry;
@@ -1580,13 +1595,22 @@ function startLiveWatch() {
   }, 1500);
 }
 
-async function sendChat() {
+async function sendChat(overrideText) {
   const input = $("chat-input");
-  const text = input.value.trim();
+  const text = (typeof overrideText === "string" ? overrideText : input.value).trim();
   if (!text || state.chatBusy) return;
+  if (!state.selectedTarget) {
+    // The target IS the allowlist: without one the chat has no boundary to work inside, so
+    // hint instead of sending. The typed message stays in the box.
+    renderChatTurn("assistant", "Pick a target system first — choose one in the left panel so I know which system I'm allowed to work on. Your message is still in the box.");
+    return;
+  }
   state.chatBusy = true;
   $("chat-send").disabled = true;
-  input.value = "";
+  // A question is answered the moment a reply is sent; stale option buttons must not offer
+  // yesterday's choice against tomorrow's question.
+  for (const stale of document.querySelectorAll("#chat-log .quick-row.structured button")) stale.disabled = true;
+  if (typeof overrideText !== "string") input.value = "";
   renderChatTurn("user", text);
   const pending = renderChatTurn("assistant", "Working — watch the live screen in the middle…");
   state.chatMessages.push({ role: "user", content: text });
@@ -1608,7 +1632,7 @@ async function sendChat() {
       renderChatTurn("assistant", payload.error ?? `HTTP ${response.status}`);
     } else {
       state.chatMessages = payload.messages;
-      renderChatTurn("assistant", payload.reply, payload.invocations);
+      renderChatTurn("assistant", payload.reply, payload.invocations, payload.options ?? []);
     }
   } catch (error) {
     pending.remove();

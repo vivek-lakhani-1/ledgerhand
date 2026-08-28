@@ -25,6 +25,12 @@ export type ChatTurnResult = {
   messages: MessageParam[];
   reply: string;
   invocations: ChatInvocation[];
+  /**
+   * Quick replies for this turn, parsed from the model's structured OPTIONS line. The page
+   * renders them as one-tap buttons, so a confirmation is a click on "Yes, proceed" rather
+   * than something the user has to type.
+   */
+  options: string[];
 };
 
 const CHAT_SYSTEM_PROMPT = [
@@ -70,7 +76,32 @@ const CHAT_SYSTEM_PROMPT = [
   "  and wait for the user's explicit confirmation in their next message. Only skip the wait when",
   "  the current message already restated and confirmed those exact values. This is the only",
   "  moment you ask for confirmation; everything else just runs.",
+  "",
+  "Whenever your reply asks the user to pick from a small set (a share, a reason code, a",
+  "branch) or to confirm an action, end the message with one final line of exactly this form:",
+  "OPTIONS: <first> | <second> | <third>",
+  "with 2-4 short options (under 40 characters each) matching what you asked. For a",
+  "confirmation the options are exactly: OPTIONS: Yes, proceed | Cancel",
+  "The console renders that line as tap buttons; never refer to the OPTIONS line in prose,",
+  "and never emit it when your reply is a final answer that asks nothing.",
 ].join("\n");
+
+/**
+ * The model marks choice-shaped replies with a trailing "OPTIONS: a | b" line. Parsing it
+ * here (not in the page) keeps the reply contract typed: the UI gets clean prose plus a
+ * list, and a model that skips the marker degrades to plain text, never to a broken parse.
+ */
+export function extractOptions(reply: string): { reply: string; options: string[] } {
+  const match = reply.match(/(?:^|\n)\s*OPTIONS:\s*([^\n]+)\s*$/i);
+  if (!match || typeof match.index !== "number") return { reply, options: [] };
+  const options = match[1]
+    .split("|")
+    .map((option) => option.trim())
+    .filter((option) => option.length > 0 && option.length <= 60)
+    .slice(0, 4);
+  if (options.length < 2) return { reply, options: [] };
+  return { reply: reply.slice(0, match.index).trimEnd(), options };
+}
 
 export type ChatTurnOptions = {
   messages: MessageParam[];
@@ -235,7 +266,8 @@ export async function runChatTurn(options: ChatTurnOptions): Promise<ChatTurnRes
     messages.push({ role: "user", content: toolResults(toolUses, (use) => results[use.id]) });
   }
 
-  return { messages, reply, invocations };
+  const parsed = extractOptions(reply);
+  return { messages, reply: parsed.reply, invocations, options: parsed.options };
 }
 
 function toolResults(

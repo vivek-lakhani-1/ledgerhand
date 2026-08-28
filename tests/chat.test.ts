@@ -146,6 +146,35 @@ describe("a chat turn over the capability catalog", () => {
     expect(model.seen[0].system).toMatch(/Replay Only/);
     expect(model.seen[0].system).toMatch(/never offer to explore/i);
   });
+
+  it("parses a trailing OPTIONS line into tap buttons and strips it from the reply", async () => {
+    const model = new PlaybackModel([[{
+      type: "text",
+      text: "Post $25.00 from 100234-S0001 to 100234-S0002 with memo \"teller transfer\"?\nOPTIONS: Yes, proceed | Cancel",
+    }]]);
+    const turn = await runChatTurn({
+      messages: [{ role: "user", content: "transfer $25 from savings to checking for 100234" }],
+      tools: tools as never,
+      model,
+      invoke: async () => ({ runId: "", result: null, error: "unused" }),
+    });
+    expect(turn.options).toEqual(["Yes, proceed", "Cancel"]);
+    expect(turn.reply).not.toContain("OPTIONS:");
+    expect(turn.reply).toContain("Post $25.00");
+  });
+
+  it("returns no options for a plain final answer", async () => {
+    const model = new PlaybackModel([[{ type: "text", text: "The balance is $52.00." }]]);
+    const turn = await runChatTurn({
+      messages: [{ role: "user", content: "balance for 100987?" }],
+      tools: tools as never,
+      model,
+      invoke: async () => ({ runId: "", result: null, error: "unused" }),
+    });
+    expect(turn.options).toEqual([]);
+    // The system prompt teaches the marker, so a capable model actually uses it.
+    expect(model.seen[0].system).toContain("OPTIONS:");
+  });
 });
 
 describe("the chat route", () => {
