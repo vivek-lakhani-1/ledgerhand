@@ -6,9 +6,9 @@ the existing core at it actually took, what had to change, and what I deliberate
 
 ## What the adaptation took
 
-Almost all of it was artifacts, not code. The core's contract — discover once, compile a typed
+Almost all of it was artifacts, not code. The core's contract (discover once, compile a typed
 capability, replay deterministically, classify endings as success / business outcome /
-recoverable / failed / escalated — mapped onto the new target without engine changes. The seven
+recoverable / failed / escalated) mapped onto the new target without engine changes. The seven
 functions are seven artifacts under `capabilities/meridian.*.v1.json`, each carrying its own
 policy allowlist (`https://web-sample.interface-hiring.com` only), outcomes, and recoveries.
 
@@ -19,7 +19,7 @@ Three properties of the target that were advertised as hard turned out to be fre
   Nothing in the schema or executor knows it exists. An HTTP-level automation would have had to
   scrape and thread it; a browser-level one gets it structurally.
 - **Review → post.** The two-step confirmations are just two steps, with the post click marked
-  `risk: irreversible` — the same shape as the take-home's confirm gate.
+  `risk: irreversible`, the same shape as the take-home's confirm gate.
 - **Fault classification.** The target's error pages have stable, distinguishing text
   ("RECORD NOT FOUND", "SCHEDULED MAINTENANCE IN PROGRESS", "YOUR SESSION HAS TIMED OUT",
   "SUPERVISOR OVERRIDE REQUIRED"), which is exactly what the existing checkpoint machinery
@@ -33,7 +33,7 @@ Three properties of the target that were advertised as hard turned out to be fre
 Four changes, all small, all now permanent improvements:
 
 1. **`discover --max-risk`.** The risk heuristic classifies a click by its control name, and
-   Meridian's *menu links* are named after the transactions behind them — clicking the
+   Meridian's *menu links* are named after the transactions behind them: clicking the
    "Funds Transfer" navigation link was scored `irreversible` and denied under discovery's
    hardcoded `maxRisk: safe`, so discovery couldn't even open the function screens. The ceiling
    is now a per-run flag; the conservative default stands.
@@ -51,7 +51,7 @@ Two couplings I found and worked around rather than fixed, both worth naming:
   extraction targets and checkpoints to the values it happened to see ("Lovelace, Ada",
   "$2,499.00") with positional CSS fallbacks. The raw recordings are kept under
   `capabilities/discovered/`; the production artifacts are hand-curated from them so that every
-  selector is record-independent — a label-adjacent cell (`td:text-is("Name:") + td`) or a
+  selector is record-independent, a label-adjacent cell (`td:text-is("Name:") + td`) or a
   header-matched table cell. Teaching the recorder to prefer structural anchors is the top of
   my next-steps list.
 - **Discovery's perception layer struggles with unlabeled legacy controls.** Meridian's form
@@ -73,11 +73,11 @@ against a live target.
 The console server carries the agent-facing surface: `GET /api/catalog` (typed input/output
 contracts), `GET /api/catalog/tools` (Anthropic tool schemas, drafts excluded), and
 `POST /api/catalog/:name/invoke` `{inputs, tenant?}` → `{runId, result}`, where `result` is the
-replay's structured verdict — the same discriminated union the CLI prints: `success` with typed
+replay's structured verdict, the same discriminated union the CLI prints: `success` with typed
 outputs, `business_outcome` with code and the application's message, `escalated` with the
 reason, `failed` with expected/observed. Invocations run through `RunHost`, so every API call
 is also a live, watchable run with an evidence directory. A run that dies without a verdict is
-a `502` — the API's failure, never a claim about the target.
+a `502`: the API's failure, never a claim about the target.
 
 The chatbot is one route (`POST /api/chat`) and one loop: the model gets the catalog as tools,
 tool calls go through the identical invoke path, the page holds the transcript. It is a demo
@@ -94,9 +94,9 @@ driver, not a second product.
   invokes through the same executor path.
 - **Drafts**: listed, never invocable. Approval stays a human decision.
 - **Redaction**: sign-on secrets and PII-marked inputs are masked before events reach disk or
-  any viewer — the member number appears as `1****7` in logged URLs. Evidence-file serving is
+  any viewer; the member number appears as `1****7` in logged URLs. Evidence-file serving is
   path-validated to the evidence tree.
-- **Escalation**: unchanged — the operator console attaches to API-started runs exactly as to
+- **Escalation**: unchanged; the operator console attaches to API-started runs exactly as to
   CLI runs.
 
 ## Deliberately left out, and next
@@ -116,7 +116,7 @@ driver, not a second product.
 ## Postscript: what a from-scratch rehearsal exposed
 
 The day before the demo I emptied `capabilities/` and drove the whole loop again purely from the
-chat front door — no CLI, no hand-authored artifacts. The rehearsal surfaced three real defects
+chat front door, no CLI, no hand-authored artifacts. The rehearsal surfaced three real defects
 in the core, each now fixed and tested (`evidence/runs/19-*` and `20-*` hold the passing runs):
 
 - **Discovery inherited replay's wall clock.** The 2-minute policy default is sized for a
@@ -124,7 +124,7 @@ in the core, each now fixed and tested (`evidence/runs/19-*` and `20-*` hold the
   Discovery now carries its own 10-minute clock, and the recorder no longer copies a
   discovery-sized timeout into the recorded artifact's replay policy.
 - **Chat-started recordings weren't parameterized.** A discovery launched from chat supplies no
-  input values — the model types the example values it declares — and the recorder only matched
+  input values (the model types the example values it declares) and the recorder only matched
   *supplied* values when canonicalizing. The recording typed the example member number for every
   future caller and scoped its table-cell strategies to the example row. Canonicalization now
   matches declared examples too, and runs deeply over steps, extraction targets, and the success

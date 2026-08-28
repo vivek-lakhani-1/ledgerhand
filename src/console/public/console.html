@@ -279,15 +279,15 @@
         <summary>Advanced</summary>
         <div class="adv-body">
           <div class="field">
-            <label for="adv-entry-url">Entry URL — defaults to the selected target's entry point</label>
+            <label for="adv-entry-url">Entry URL - defaults to the selected target's entry point</label>
             <input id="adv-entry-url" type="text" placeholder="(target default)">
           </div>
           <div class="field">
-            <label for="adv-secrets">Discovery credential env vars — <code>.env</code> names, never real passwords</label>
+            <label for="adv-secrets">Discovery credential env vars - <code>.env</code> names, never real passwords</label>
             <input id="adv-secrets" type="text" placeholder="(target default)">
           </div>
           <div class="field">
-            <label for="adv-inputs">Discovery inputs — one <code>key=value</code> per line</label>
+            <label for="adv-inputs">Discovery inputs - one <code>key=value</code> per line</label>
             <textarea id="adv-inputs" rows="2" placeholder="memberId=10001"></textarea>
           </div>
           <div class="row" style="margin-bottom:8px">
@@ -330,7 +330,7 @@
         <div class="inner">
           <div class="glyph">🖥️</div>
           <div class="big" id="frame-empty-title">Nothing running yet</div>
-          <div id="frame-empty-text">Pick a target, describe a task on the left — the automated browser shows up here live while it works.</div>
+          <div id="frame-empty-text">Pick a target, describe a task on the left - the automated browser shows up here live while it works.</div>
         </div>
       </div>
       <img id="frame" alt="Live view of the automated browser page" hidden>
@@ -466,7 +466,7 @@ function appendEvent(ev) {
   if (sub) {
     const subEl = document.createElement("span");
     subEl.className = "sub";
-    subEl.textContent = ` — ${sub}`;
+    subEl.textContent = ` - ${sub}`;
     titleEl.append(subEl);
   }
   const pre = document.createElement("pre");
@@ -556,7 +556,7 @@ function renderResult(summary) {
       if (d.status === "escalated") {
         // A discovery escalation is a question, not an approval gate: the run has ended and
         // the answer goes into the next request, so the card must say exactly that.
-        note = "This discovery run has ended — the AI stopped to ask a question instead of guessing. Answer it by restating the task with the missing detail in the chat; a fresh discovery will use your answer.";
+        note = "This discovery run has ended - the AI stopped to ask a question instead of guessing. Answer it by restating the task with the missing detail in the chat; a fresh discovery will use your answer.";
         actions.push({ label: "Answer in chat", primary: true, onClick: () => focusChatReply() });
       }
       if (d.reason) rows.push(["reason", d.reason]);
@@ -585,7 +585,7 @@ function renderResult(summary) {
       tone = "bad";
       headline = "FAILED";
       rows.push(["problem", r.error?.class]);
-      rows.push(["at step", `${r.error?.stepId ?? "run"}${r.error?.stepDescription ? ` — ${r.error.stepDescription}` : ""}`]);
+      rows.push(["at step", `${r.error?.stepId ?? "run"}${r.error?.stepDescription ? ` - ${r.error.stepDescription}` : ""}`]);
       rows.push(["expected", r.error?.expected]);
       rows.push(["observed", r.error?.observed]);
       rows.push(["message", r.error?.message]);
@@ -726,7 +726,7 @@ function renderState(summary) {
   badge.hidden = false;
   badge.textContent = summary.kind === "discovery"
     ? "AI exploring (Discovery)"
-    : "Deterministic Replay — AI not used";
+    : "Deterministic Replay - AI not used";
 
   const link = $("operator-link");
   if (summary.operatorUrl && (summary.status === "running" || summary.status === "starting")) {
@@ -807,7 +807,7 @@ function attach(runId) {
   // Hidden until a frame actually arrives; a run with no screenshot (a stopped discovery, a
   // history entry from before screenshots existed) should show the placeholder, not a broken image.
   $("frame").hidden = true;
-  // No placeholder chatter while a run is live — the stage stays dark until the first frame.
+  // No placeholder chatter while a run is live - the stage stays dark until the first frame.
   $("frame-empty").hidden = true;
   $("frame-note").hidden = true;
   if (state.frameUrl) { URL.revokeObjectURL(state.frameUrl); state.frameUrl = null; }
@@ -829,7 +829,7 @@ async function attachToRun(runId) {
       if ($("frame").hidden) {
         $("frame-empty").hidden = false;
         $("frame-empty-title").textContent = "No screenshot for this run";
-        $("frame-empty-text").textContent = "This run ended without painting a frame — its story is in the steps and evidence.";
+        $("frame-empty-text").textContent = "This run ended without painting a frame - its story is in the steps and evidence.";
       }
     });
     void loadEvidence(runId);
@@ -871,7 +871,7 @@ async function loadEvidence(runId) {
   }));
   state.shotIndex = -1;
   if (evidence.screenshots.length) {
-    parts.push(`<div class="ev-title">Evidence — ${evidence.screenshots.length} screenshots · click one to view it above, then browse with ← →</div>
+    parts.push(`<div class="ev-title">Evidence - ${evidence.screenshots.length} screenshots · click one to view it above, then browse with ← →</div>
       <div class="shots">${state.shots.map((shot, index) =>
         `<button class="shot" data-index="${index}" title="${escapeHtml(shot.name)}">
            <img loading="lazy" src="${shot.url}" alt="${escapeHtml(shot.name)}">
@@ -977,7 +977,7 @@ function selectTarget(target) {
   if (!target) {
     state.selectedTarget = null;
     renderTargetSummary();
-    $("message").textContent = "No target systems are configured — check config/targets.json.";
+    $("message").textContent = "No target systems are configured - check config/targets.json.";
     return;
   }
   state.selectedTarget = target;
@@ -1186,7 +1186,7 @@ function renderReplayPlan(plan, decision) {
   if (decision.notes.changesTarget && !decision.notes.approval) {
     lines.push(planLine("note", "!", "This automation changes the target system."));
   }
-  lines.push(planLine("act", "→", "Deterministic Replay — AI is not used during this run"));
+  lines.push(planLine("act", "→", "Deterministic Replay - AI is not used during this run"));
   card.innerHTML = `<h4>Automation Plan</h4><div class="headline">AUTOMATION FOUND</div>${lines.join("")}
     <div id="plan-inputs" style="margin-top:10px"></div>
     <div id="plan-cred"></div>
@@ -1206,7 +1206,7 @@ function renderReplayPlan(plan, decision) {
     const id = `plan-input-${spec.name}`;
     const label = document.createElement("label");
     label.htmlFor = id;
-    label.textContent = `${spec.name}${spec.required ? " *" : ""}${spec.description ? ` — ${spec.description}` : ""}`;
+    label.textContent = `${spec.name}${spec.required ? " *" : ""}${spec.description ? ` - ${spec.description}` : ""}`;
     const input = document.createElement("input");
     input.id = id;
     input.type = "text";
@@ -1221,13 +1221,13 @@ function renderReplayPlan(plan, decision) {
   if (profiles.length > 1) {
     const field = document.createElement("div");
     field.className = "field";
-    field.innerHTML = `<label for="plan-profile">Credentials — chosen before the run; Ledgerhand never switches accounts mid-run</label><select id="plan-profile"></select>
+    field.innerHTML = `<label for="plan-profile">Credentials - chosen before the run; Ledgerhand never switches accounts mid-run</label><select id="plan-profile"></select>
       <div class="lede tiny" id="plan-cred-vars" style="margin:4px 0 0"></div>`;
     const select = field.querySelector("select");
     for (const profile of profiles) {
       const option = document.createElement("option");
       option.value = profile.id;
-      option.textContent = profile.description ? `${profile.label} — ${profile.description}` : profile.label;
+      option.textContent = profile.description ? `${profile.label} - ${profile.description}` : profile.label;
       select.append(option);
     }
     // Which env-var names the run will actually read - visible even for "As recorded",
@@ -1237,7 +1237,7 @@ function renderReplayPlan(plan, decision) {
       const profile = profiles.find((candidate) => candidate.id === select.value);
       const aliases = profile?.secretAliases ?? {};
       const resolved = (cap.secretsRequired ?? []).map((name) => aliases[name] ?? name);
-      varsLine.textContent = resolved.length ? `Signs on with: ${[...new Set(resolved)].join(", ")} (env-var names — values are never stored)` : "";
+      varsLine.textContent = resolved.length ? `Signs on with: ${[...new Set(resolved)].join(", ")} (env-var names - values are never stored)` : "";
     };
     select.addEventListener("change", showVars);
     showVars();
@@ -1245,7 +1245,7 @@ function renderReplayPlan(plan, decision) {
   } else if ((cap.secretsRequired ?? []).length) {
     const note = document.createElement("div");
     note.className = "lede tiny";
-    note.textContent = `Signs on with: ${cap.secretsRequired.join(", ")} (env-var names — values are never stored)`;
+    note.textContent = `Signs on with: ${cap.secretsRequired.join(", ")} (env-var names - values are never stored)`;
     credHolder.append(note);
   }
 
@@ -1335,7 +1335,7 @@ function renderDiscoveryPlan(plan, decision) {
       <dt>credentials</dt><dd class="mono">${escapeHtml((decision.secretNames ?? []).join(", "))}</dd>
     </dl>
     <div class="field" style="margin-top:8px">
-      <label for="disc-inputs">Business inputs the task needs — one <code>key=value</code> per line (e.g. <code>memberId=10001</code>)</label>
+      <label for="disc-inputs">Business inputs the task needs - one <code>key=value</code> per line (e.g. <code>memberId=10001</code>)</label>
       <textarea id="disc-inputs" rows="2"></textarea>
     </div>
     <div class="btns">
@@ -1388,7 +1388,7 @@ async function openReviewByFile(file) {
   await refreshTargetsAndCapabilities();
   const listing = state.capabilities.find((cap) => cap.file === file);
   if (!listing) {
-    $("message").textContent = `Draft ${file} is not in the catalog yet — refresh and try again.`;
+    $("message").textContent = `Draft ${file} is not in the catalog yet - refresh and try again.`;
     return;
   }
   return openReview(listing.name);
@@ -1410,7 +1410,7 @@ async function openReview(name) {
   const steps = capability.steps.map((step) => `
     <li class="${step.risk === "irreversible" ? "irr" : ""}">
       <span class="mono">${escapeHtml(step.id)}</span> ${escapeHtml(step.description ?? "")}
-      ${step.risk && step.risk !== "safe" ? `<span class="risk">${escapeHtml(step.risk)}${step.risk === "irreversible" ? " — will pause for approval" : ""}</span>` : ""}
+      ${step.risk && step.risk !== "safe" ? `<span class="risk">${escapeHtml(step.risk)}${step.risk === "irreversible" ? " - will pause for approval" : ""}</span>` : ""}
     </li>`).join("");
   sheet.innerHTML = `
     <div class="row" style="justify-content: space-between; margin-bottom: 8px">
@@ -1422,12 +1422,12 @@ async function openReview(name) {
       <div>${escapeHtml(capability.description)}</div>
       <dl class="kv-grid">
         <dt>name</dt><dd class="mono">${escapeHtml(capability.name)} v${escapeHtml(capability.version)}</dd>
-        <dt>status</dt><dd>${listing.approval === "draft" ? "Draft — review required" : escapeHtml(listing.approval)}</dd>
+        <dt>status</dt><dd>${listing.approval === "draft" ? "Draft - review required" : escapeHtml(listing.approval)}</dd>
         <dt>allowed target</dt><dd class="mono">${escapeHtml((capability.policy.allowedOrigins ?? []).join(", "))}</dd>
-        <dt>credentials</dt><dd class="mono">${escapeHtml(capability.secretsRequired.join(", "))} <span style="color:var(--muted)">(env-var names — values are never stored)</span></dd>
-        <dt>inputs</dt><dd class="mono">${escapeHtml(capability.inputs.map((input) => input.name).join(", ") || "—")}</dd>
-        <dt>outputs</dt><dd class="mono">${escapeHtml(capability.outputs.map((output) => output.name).join(", ") || "—")}</dd>
-        <dt>recorded from</dt><dd class="mono">${escapeHtml(capability.provenance?.discoveryRunId ?? "—")}</dd>
+        <dt>credentials</dt><dd class="mono">${escapeHtml(capability.secretsRequired.join(", "))} <span style="color:var(--muted)">(env-var names - values are never stored)</span></dd>
+        <dt>inputs</dt><dd class="mono">${escapeHtml(capability.inputs.map((input) => input.name).join(", ") || "-")}</dd>
+        <dt>outputs</dt><dd class="mono">${escapeHtml(capability.outputs.map((output) => output.name).join(", ") || "-")}</dd>
+        <dt>recorded from</dt><dd class="mono">${escapeHtml(capability.provenance?.discoveryRunId ?? "-")}</dd>
       </dl>
     </div>
     <h3>Steps Replay will perform (${capability.steps.length})</h3>
@@ -1451,7 +1451,7 @@ async function openReview(name) {
     sheet.innerHTML = `
       <div class="card ok">
         <div class="headline">AUTOMATION APPROVED</div>
-        <div><strong>${escapeHtml(capability.title)}</strong> is now available for deterministic Replay — from Chat, Manual Run, and the API.</div>
+        <div><strong>${escapeHtml(capability.title)}</strong> is now available for deterministic Replay - from Chat, Manual Run, and the API.</div>
         <div class="btns">
           <button class="primary" id="approved-run">Run Replay Now</button>
           <button id="approved-close">Close</button>
@@ -1585,7 +1585,7 @@ function invocationTone(status) {
   return "bad";
 }
 
-// Any run started anywhere — the chat, the manual forms, another tab — should put itself on
+// Any run started anywhere - the chat, the manual forms, another tab - should put itself on
 // stage. Poll cheaply for a live run and attach to it; when nothing is live, leave the
 // current view alone. This is also what clears the idle overlay the moment work begins.
 function startLiveWatch() {
@@ -1649,7 +1649,7 @@ async function sendChat(overrideText) {
   if (!state.selectedTarget) {
     // The target IS the allowlist: without one the chat has no boundary to work inside, so
     // hint instead of sending. The typed message stays in the box.
-    renderChatTurn("assistant", "Pick a target system first — choose one in the left panel so I know which system I'm allowed to work on. Your message is still in the box.");
+    renderChatTurn("assistant", "Pick a target system first - choose one in the left panel so I know which system I'm allowed to work on. Your message is still in the box.");
     return;
   }
   state.chatBusy = true;
@@ -1659,7 +1659,7 @@ async function sendChat(overrideText) {
   for (const stale of document.querySelectorAll("#chat-log .quick-row.structured button")) stale.disabled = true;
   if (typeof overrideText !== "string") input.value = "";
   renderChatTurn("user", text);
-  const pending = renderChatTurn("assistant", "Working — watch the live screen in the middle…");
+  const pending = renderChatTurn("assistant", "Working - watch the live screen in the middle…");
   state.chatMessages.push({ role: "user", content: text });
   try {
     const target = state.selectedTarget;

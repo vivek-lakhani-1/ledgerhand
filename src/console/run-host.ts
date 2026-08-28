@@ -149,7 +149,7 @@ export type RunHostOptions = {
  * Owns replay and discovery runs launched from the console and keeps their events, live browser
  * frames and final results addressable by run id. The CLI runs one capability and exits; this has
  * to hold several runs open at once and let a browser attach to any of them partway through, so
- * events are buffered as well as broadcast — a viewer that connects at step 6 still gets steps 1-5.
+ * events are buffered as well as broadcast - a viewer that connects at step 6 still gets steps 1-5.
  */
 export class RunHost {
   private readonly runs = new Map<string, LiveRun>();
@@ -480,7 +480,7 @@ export class RunHost {
         // The browser went away under the run without a stop request: the console was shut
         // down or restarted mid-run. That is an interruption, not a defect in the run.
         run.summary.status = "stopped";
-        run.summary.error = "The run's browser closed before it finished — the console was stopped or restarted mid-run";
+        run.summary.error = "The run's browser closed before it finished - the console was stopped or restarted mid-run";
         run.summary.exitCode = 2;
       } else {
         run.summary.error = message;

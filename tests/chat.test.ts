@@ -108,7 +108,7 @@ describe("a chat turn over the capability catalog", () => {
   it("offers start_discovery as a tool and fires it without blocking on the run", async () => {
     const model = new PlaybackModel([
       [{ type: "tool_use", id: "t1", name: "start_discovery", input: { goal: "Read the fraud review setting" } }],
-      [{ type: "text", text: "Discovery started — watch the stage. The result will be a draft for your review." }],
+      [{ type: "text", text: "Discovery started - watch the stage. The result will be a draft for your review." }],
     ]);
     const started: string[] = [];
     const turn = await runChatTurn({
