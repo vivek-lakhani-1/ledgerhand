@@ -158,6 +158,30 @@
       "origin": "https://floor.factoryops.example",
       "entryUrl": "https://floor.factoryops.example/login",
       "discoverySecretNames": ["FACTORYOPS_USER", "FACTORYOPS_PASSWORD"]
+    },
+    {
+      "id": "loanservicing",
+      "name": "LoanServicing Legacy",
+      "category": "Loan Servicing",
+      "origin": "https://servicing.loanservicing.example",
+      "entryUrl": "https://servicing.loanservicing.example/login",
+      "discoverySecretNames": ["LOANSERVICING_USER", "LOANSERVICING_PASSWORD"]
+    },
+    {
+      "id": "carddesk",
+      "name": "CardDesk Disputes",
+      "category": "Card Disputes",
+      "origin": "https://desk.carddesk.example",
+      "entryUrl": "https://desk.carddesk.example/login",
+      "discoverySecretNames": ["CARDDESK_USER", "CARDDESK_PASSWORD"]
+    },
+    {
+      "id": "trustadmin",
+      "name": "TrustAdmin",
+      "category": "Trust & Estate Administration",
+      "origin": "https://admin.trustadmin.example",
+      "entryUrl": "https://admin.trustadmin.example/login",
+      "discoverySecretNames": ["TRUSTADMIN_USER", "TRUSTADMIN_PASSWORD"]
     }
   ]
 }
