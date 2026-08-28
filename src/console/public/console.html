@@ -371,6 +371,8 @@ const state = {
   chatMessages: [],
   chatBusy: false,
   autoAttached: null,
+  // Discovery runs the chat kicked off, still owed a completion message in the chat log.
+  chatWatch: {},
   shots: [],
   shotIndex: -1,
   plan: null,
@@ -551,6 +553,12 @@ function renderResult(summary) {
       if (file) actions.push({ label: "Review Automation", primary: true, onClick: () => void openReviewByFile(file) });
     } else {
       headline = d.status === "escalated" ? "HUMAN HELP REQUIRED" : "DISCOVERY STOPPED";
+      if (d.status === "escalated") {
+        // A discovery escalation is a question, not an approval gate: the run has ended and
+        // the answer goes into the next request, so the card must say exactly that.
+        note = "This discovery run has ended — the AI stopped to ask a question instead of guessing. Answer it by restating the task with the missing detail in the chat; a fresh discovery will use your answer.";
+        actions.push({ label: "Answer in chat", primary: true, onClick: () => focusChatReply() });
+      }
       if (d.reason) rows.push(["reason", d.reason]);
     }
     rows.push(["model steps", d.traceLength]);
@@ -1584,6 +1592,7 @@ function startLiveWatch() {
   setInterval(async () => {
     try {
       const runs = await fetch("/api/runs").then((r) => r.json());
+      notifyChatDiscoveries(runs);
       const live = runs.find((r) => r.status === "running" || r.status === "starting");
       // Each new run takes the stage exactly once, so browsing an old run's evidence is
       // never yanked back to a run the viewer already saw arrive.
@@ -1593,6 +1602,44 @@ function startLiveWatch() {
       }
     } catch { /* next tick retries */ }
   }, 1500);
+}
+
+/**
+ * The chat kicked a discovery off, so the chat owes the user its ending. Escalations are the
+ * important case: the run is over and the model's question would otherwise sit unanswered on
+ * the stage card while the chat still says "underway". The message also goes into the
+ * transcript, so the user's next reply retries discovery with the clarification in context.
+ */
+function notifyChatDiscoveries(runs) {
+  for (const run of runs) {
+    if (!state.chatWatch[run.runId] || !run.finishedAt) continue;
+    delete state.chatWatch[run.runId];
+    const d = run.discovery ?? {};
+    let text;
+    if (d.status === "completed") {
+      const file = d.capabilityPath ? d.capabilityPath.split("/").pop() : null;
+      text = `Discovery finished and recorded a draft automation${file ? ` (${file})` : ""}. `
+        + "Review and approve it from the card on the stage; once approved, ask me again and I'll run it directly.";
+    } else if (d.status === "escalated") {
+      text = "Discovery stopped to ask for your help instead of guessing:\n\n"
+        + `"${d.reason ?? "(no reason recorded)"}"\n\n`
+        + "Reply here with the missing detail and I'll start a fresh discovery using your answer.";
+    } else {
+      text = `Discovery run ${run.runId} stopped before finishing${d.reason ? `: ${d.reason}` : "."}`;
+    }
+    renderChatTurn("assistant", text);
+    // The transcript is client-held state; recording the outcome here is what lets the next
+    // user turn reference "the question above" and have the model actually see it.
+    state.chatMessages.push({ role: "assistant", content: text });
+  }
+}
+
+/** Jumps the user from the stage card to the chat box to answer a discovery question. */
+function focusChatReply() {
+  showManual(false);
+  const input = $("chat-input");
+  input.focus();
+  input.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 async function sendChat(overrideText) {
@@ -1633,6 +1680,9 @@ async function sendChat(overrideText) {
     } else {
       state.chatMessages = payload.messages;
       renderChatTurn("assistant", payload.reply, payload.invocations, payload.options ?? []);
+      for (const invocation of payload.invocations ?? []) {
+        if (invocation.status === "discovering" && invocation.runId) state.chatWatch[invocation.runId] = true;
+      }
     }
   } catch (error) {
     pending.remove();
