@@ -10,7 +10,16 @@ purpose - framesets, table layout, no test ids - rather than to look like a real
 service. A catalog and CLI expose saved capabilities so an agent could call them by name.
 
 Design notes are in [REPORT.md](REPORT.md). Saved runs are in [evidence/](evidence/). The suite
-is 162 automated tests across 24 files plus a strict typecheck (`npm test`, `npm run typecheck`).
+is 164 automated tests across 23 files plus a strict typecheck (`npm test`, `npm run typecheck`),
+including an invariants test that fails the build if anything on the replay side ever gains an
+import of the model SDK.
+
+Measured on demo day against the live hosted target: 20 consecutive replays of
+`meridian.member.balance`, 20 successes, identical typed outputs every time, median 14.8s,
+worst 17.3s, zero model calls and zero tokens spent. The per-run table and a full sample run
+are committed as `evidence/runs/21-meridian-stability-sweep`, and each artifact keeps its own
+lifetime `stability` counters (this one is at 51 recorded runs, a history that includes the
+fault-injection and not-found demonstrations).
 
 ```mermaid
 flowchart LR
@@ -85,37 +94,38 @@ ledgerhand app --port 4599      # terminal 1
 ledgerhand console --port 4620  # terminal 2
 ```
 
-Open <http://127.0.0.1:4620>. The console presents one concept — **Automation** — over the
+Open <http://127.0.0.1:4620>. The console presents one concept, **Automation**, over the
 existing Discovery/Replay machinery. The workflow is: choose where Ledgerhand may work, tell it
 what you want done, and it handles the rest safely.
 
-**Target System** — a searchable, single-select list of configured systems (`config/targets.json`,
+**Target System**: a searchable, single-select list of configured systems (`config/targets.json`,
 ~15 presets across banking, insurance, healthcare, logistics, …), each showing how many approved
 automations the catalog actually holds for it. One run is locked to one target's origin: the
 allowlist below the model is derived from the selection, and pasting an entry URL auto-selects the
 matching preset (an unknown URL becomes an in-memory Custom Target scoped to that origin alone).
-A target appearing in the list never implies an automation exists for it — the counts say that.
+A target appearing in the list never implies an automation exists for it; the counts say that.
 
-**Automation Mode** — `Automatic` (default): search the approved catalog for the task; a strong
-match runs deterministic Replay, no match starts Discovery, and an existing similar draft is
-offered for review instead of silently rediscovering. `Replay Only`: approved automations only —
-if none matches, the console says so and Discovery is a separate, optional button. `Discover
+**Automation Mode** has three settings. `Automatic` (default): search the approved catalog for
+the task; a strong match runs deterministic Replay, no match starts Discovery, and an existing
+similar draft is offered for review instead of silently rediscovering. `Replay Only`: approved
+automations only; if none matches, the console says so and Discovery is a separate, optional
+button. `Discover
 Only`: always explore and record a new draft.
 
-**Chat** is the front door: questions that expect a choice — confirming an irreversible action,
-picking a share — arrive with one-tap reply buttons, so a confirmation is a click on
+**Chat** is the front door: questions that expect a choice (confirming an irreversible action,
+picking a share) arrive with one-tap reply buttons, so a confirmation is a click on
 "Yes, proceed" rather than something typed. Describe the task, and Ledgerhand reports whether it already knows it
 ("I found an existing automation: `meridian.member.balance`. Running it now.") or offers
 Discovery. The chat's tool catalog is scoped to the selected target, and it uses the same
 guardrailed invoke path as every other caller. **Manual Run** (compact button, top left) swaps
-only the left panel for advanced controls — goal, typed inputs, credential profile, entry URL,
-fault injection, step limits — while the live stage and steps stay visible; "← Back to Chat"
+only the left panel for advanced controls (goal, typed inputs, credential profile, entry URL,
+fault injection, step limits) while the live stage and steps stay visible; "← Back to Chat"
 restores the default view.
 
 The center stage shows the live browser frame (refreshed about once a second, held on the last
 frame when a run ends), plain-language run statuses (`PREPARING`, `REPLAYING`, `APPROVAL
 REQUIRED`, `HUMAN HELP REQUIRED`, `SUCCESS`, …), and an execution badge making the architecture
-visible: `Deterministic Replay — AI not used` during replay, `AI exploring (Discovery)` during
+visible: `Deterministic Replay - AI not used` during replay, `AI exploring (Discovery)` during
 discovery. The right column is the technical timeline: every event as it is emitted, expandable to
 raw JSON, with **Verbose** revealing per-action mechanics. Events reach the page through the same
 `RunLogger` the log file uses, after redaction, so the panel can never show a secret the log would
@@ -123,24 +133,24 @@ have masked.
 
 Four questions stay separate in the UI, and in the state model underneath:
 
-1. **Target** — where is Ledgerhand allowed to operate? (the selected system, one per run)
-2. **Knowledge** — does an approved automation for the task exist? (`AUTOMATION FOUND` vs
+1. **Target**: where is Ledgerhand allowed to operate? (the selected system, one per run)
+2. **Knowledge**: does an approved automation for the task exist? (`AUTOMATION FOUND` vs
    `NEW AUTOMATION REQUIRED`)
-3. **Permission** — can the signed-in account complete it? A permission wall hit mid-Replay
+3. **Permission**: can the signed-in account complete it? A permission wall hit mid-Replay
    pauses the run with a `PERMISSION REQUIRED` card: Ledgerhand never switches to a
    higher-privilege account on its own; the card links to the Operator Console for human
    takeover of the same live browser session.
-4. **Approval** — an irreversible step (where the artifact requires it) pauses the run *before*
-   acting, with a prominent `APPROVAL REQUIRED` card — member, share, inputs, and
-   `Approve and Continue` / `Cancel` — right in the main console.
+4. **Approval**: an irreversible step (where the artifact requires it) pauses the run *before*
+   acting, with a prominent `APPROVAL REQUIRED` card showing member, share, inputs, and
+   `Approve and Continue` / `Cancel`, right in the main console.
 
-Discovery ends in `DISCOVERY COMPLETE — Review Required`, never in a runnable automation: the
+Discovery ends in `DISCOVERY COMPLETE - Review Required`, never in a runnable automation: the
 **Review Automation** overlay shows exactly what Replay would execute (steps, checkpoints,
 credential env-var *names*), and only an explicit **Approve** promotes the draft. Drafts are
-refused by every invocation surface — chat, the runs API, and the catalog API alike.
+refused by every invocation surface: chat, the runs API, and the catalog API alike.
 
-**Credential profiles** (per target, in the plan card) select which env-var *names* a run reads —
-e.g. Meridian's "Teller (teller1)" vs "Supervisor (super1)" — so the supervisor-wall demo needs no
+**Credential profiles** (per target, in the plan card) select which env-var *names* a run reads,
+e.g. Meridian's "Teller (teller1)" vs "Supervisor (super1)", so the supervisor-wall demo needs no
 `.env` editing. The mapping is name→name, chosen explicitly before the run, recorded in evidence,
 and never changed mid-run.
 
@@ -150,14 +160,14 @@ exit codes.
 ## MERIDIAN CORE: the hosted adaptation target
 
 `capabilities/meridian.*.v1.json` point the same core at MERIDIAN CORE, a hosted legacy
-credit-union servicing console at `https://web-sample.interface-hiring.com` — server-rendered
+credit-union servicing console at `https://web-sample.interface-hiring.com`: server-rendered
 HTML, table layout, a per-transaction hidden token, and injectable runtime faults. There is no
 local app to start; the capabilities drive the live site. The write-up of what the adaptation
 took is in [ADAPTATION.md](ADAPTATION.md).
 
 Sign-on-based capabilities take an optional `branch` input (`MAIN-001`, `WEST-014`, `EAST-022`;
 defaults to `MAIN-001`) and prove the chosen branch in the session's status bar. Discovery against
-Meridian names its credential env vars per run — `--secret MERIDIAN_OPERATOR --secret
+Meridian names its credential env vars per run: `--secret MERIDIAN_OPERATOR --secret
 MERIDIAN_PASSWORD` on the CLI; in the console the selected target supplies its own credential
 env-var names (`config/targets.json`), overridable under Manual Run → Advanced.
 
@@ -190,7 +200,7 @@ recovered fault back to back.
 
    Expected: `SUCCESS` with `memberName`, `primaryShareId`, `primaryShareBalance`, `primaryShareStatus`; exit `0`.
 
-2. Business outcome — no such member:
+2. Business outcome (no such member):
 
    ```bash
    ledgerhand replay capabilities/meridian.member.balance.v1.json --input memberNumber=999999
@@ -254,26 +264,26 @@ recovered fault back to back.
    ```
 
    Expected: the invoke call answers with `{ runId, result }` where `result` is the same
-   structured verdict the CLI prints — and the run is watchable on the console while it happens.
+   structured verdict the CLI prints, and the run is watchable on the console while it happens.
 
 7. The chatbot: open the console's **Chat** tab and ask
    *"What is the balance for member 100234?"* or
    *"Transfer $5 from 100987-S0001 to 100987-S0070, memo demo"*. Each reply cites the run it
    invoked; clicking the chip shows that run's timeline, frame, and evidence.
 
-8. From scratch — the discovery fallback. Delete (or move aside) everything in `capabilities/`
+8. From scratch: the discovery fallback. Delete (or move aside) everything in `capabilities/`
    and ask the chat for a balance anyway. The console reports that no automation exists and
    starts Discovery on the spot; the run records a draft, the draft is reviewed and approved,
-   and the same request then replays deterministically — for any member, not just the one the
+   and the same request then replays deterministically, for any member, not just the one the
    recording saw. `evidence/runs/19-fresh-discovery-from-chat` and
    `evidence/runs/20-fresh-draft-replay-and-notfound` are one full pass of exactly that,
    including the cross-member replay and a `MEMBER_NOT_FOUND` business outcome.
 
-Saved Meridian runs — one per demonstration above, including the discovery recording — are
-committed under `evidence/runs/10-meridian-*` through `20-*` as the offline backup.
+Saved Meridian runs, one per demonstration above including the discovery recording, are
+committed under `evidence/runs/10-meridian-*` through `21-*` as the offline backup.
 
 A note on the operator console's trust model: it binds to `127.0.0.1` and carries no
-authentication — whoever can reach the loopback interface can approve an intervention. That is
+authentication; whoever can reach the loopback interface can approve an intervention. That is
 an accepted cut for a single-operator demo; a deployment would put an authenticated,
 audit-logged surface in front of it (the intervention records already capture who-did-what).
 
